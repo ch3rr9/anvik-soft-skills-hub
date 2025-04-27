@@ -10,12 +10,16 @@ interface MessageInputProps {
 
 const MessageInput = ({ onSendMessage }: MessageInputProps) => {
   const [messageInput, setMessageInput] = useState("");
+  const [isSending, setIsSending] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (messageInput.trim()) {
+    if (messageInput.trim() && !isSending) {
+      setIsSending(true);
       onSendMessage(messageInput);
       setMessageInput("");
+      // Небольшая задержка для предотвращения спама сообщений
+      setTimeout(() => setIsSending(false), 300);
     }
   };
 
@@ -27,8 +31,9 @@ const MessageInput = ({ onSendMessage }: MessageInputProps) => {
           onChange={(e) => setMessageInput(e.target.value)}
           placeholder="Введите сообщение..."
           className="flex-1"
+          disabled={isSending}
         />
-        <Button type="submit" size="icon">
+        <Button type="submit" size="icon" disabled={isSending || !messageInput.trim()}>
           <Send className="h-5 w-5" />
         </Button>
       </form>

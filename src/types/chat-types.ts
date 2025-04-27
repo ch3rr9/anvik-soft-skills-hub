@@ -6,6 +6,7 @@ export interface Message {
   content: string;
   timestamp: string;
   read: boolean;
+  chatId: string; // Добавляем идентификатор чата для правильного сохранения
 }
 
 export interface ChatRoom {
