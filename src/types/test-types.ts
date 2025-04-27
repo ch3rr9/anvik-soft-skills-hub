@@ -1,4 +1,3 @@
-
 export interface Question {
   id: number;
   text: string;
@@ -28,4 +27,9 @@ export interface TestResult {
   passedAt: string;
   passed: boolean;
   answers: number[]; // индексы выбранных ответов
+}
+
+export interface PsychTestResult extends TestResult {
+  recommendation: string;
+  needsVacation: boolean;
 }

@@ -1,11 +1,12 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Calendar } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { generateYearlySchedule } from "@/data/scheduleData";
 
 // Мок данных для рабочего графика
 const WORK_SCHEDULE = [
@@ -29,6 +30,33 @@ const VACATIONS = [
 ];
 
 const WeekScheduleView = () => {
+  const { user } = useAuth();
+  const [weekSchedule, setWeekSchedule] = useState<any[]>([]);
+  
+  useEffect(() => {
+    if (user) {
+      const yearSchedule = generateYearlySchedule(user.role);
+      const today = new Date();
+      const startOfWeek = new Date(today);
+      const diff = today.getDay() === 0 ? 6 : today.getDay() - 1;
+      startOfWeek.setDate(today.getDate() - diff);
+      
+      const weekDays = [];
+      for (let i = 0; i < 7; i++) {
+        const currentDate = new Date(startOfWeek);
+        currentDate.setDate(startOfWeek.getDate() + i);
+        const scheduleDay = yearSchedule.find(day => 
+          day.date.toDateString() === currentDate.toDateString()
+        );
+        weekDays.push({
+          date: currentDate,
+          ...scheduleDay
+        });
+      }
+      setWeekSchedule(weekDays);
+    }
+  }, [user]);
+
   // Получаем текущую дату и день недели
   const today = new Date();
   const currentDay = today.getDay(); // 0 - воскресенье, 1 - понедельник и т.д.

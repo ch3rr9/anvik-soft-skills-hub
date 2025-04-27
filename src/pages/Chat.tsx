@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
@@ -232,6 +231,26 @@ const Chat = () => {
       setTimeout(() => {
         scrollToBottom();
       }, 100);
+    }
+  }, [selectedChat]);
+  
+  // Add interval for message polling
+  useEffect(() => {
+    if (selectedChat) {
+      // Initial load of messages
+      const chatMessages = MOCK_MESSAGES[selectedChat.id] || [];
+      setMessages(chatMessages);
+      
+      // Set up polling interval
+      const interval = setInterval(() => {
+        const updatedMessages = MOCK_MESSAGES[selectedChat.id] || [];
+        if (updatedMessages.length > messages.length) {
+          setMessages(updatedMessages);
+          scrollToBottom();
+        }
+      }, 3000); // Poll every 3 seconds
+      
+      return () => clearInterval(interval);
     }
   }, [selectedChat]);
   
