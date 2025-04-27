@@ -1,3 +1,4 @@
+
 import { ChatRoom, Message } from "@/types/chat-types";
 
 // Мок пользователей
@@ -51,6 +52,7 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "Добрый день всем! Напоминаю, что завтра в 10:00 состоится общее собрание.",
       timestamp: "2025-04-27T09:30:00Z",
       read: true,
+      chatId: "chat1"
     },
     {
       id: 2,
@@ -59,6 +61,7 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "Добрый день! В повестке дня обсуждение новых тестов навыков для сотрудников.",
       timestamp: "2025-04-27T09:35:00Z",
       read: true,
+      chatId: "chat1"
     },
     {
       id: 3,
@@ -67,6 +70,7 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "Спасибо за информацию. Буду готов к обсуждению.",
       timestamp: "2025-04-27T09:40:00Z",
       read: true,
+      chatId: "chat1"
     },
     {
       id: 4,
@@ -75,6 +79,7 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "У меня есть предложения по новым тестам для разработчиков 1С. Подготовлю материалы к собранию.",
       timestamp: "2025-04-27T09:45:00Z",
       read: false,
+      chatId: "chat1"
     },
     {
       id: 5,
@@ -83,6 +88,7 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "Отлично! Ждем ваши предложения, Петр.",
       timestamp: "2025-04-27T09:50:00Z",
       read: false,
+      chatId: "chat1"
     },
     {
       id: 6,
@@ -91,6 +97,7 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "Я тоже подготовлю материалы по тестированию UI компонент.",
       timestamp: "2025-04-27T09:55:00Z",
       read: false,
+      chatId: "chat1"
     },
   ],
   "chat2": [
@@ -101,6 +108,7 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "Коллеги, как продвигается работа над новым модулем?",
       timestamp: "2025-04-26T15:30:00Z",
       read: true,
+      chatId: "chat2"
     },
     {
       id: 2,
@@ -109,6 +117,7 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "Модуль почти готов, сегодня закончу основную логику.",
       timestamp: "2025-04-26T15:35:00Z",
       read: true,
+      chatId: "chat2"
     },
     {
       id: 3,
@@ -117,6 +126,7 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "Я завершил интеграцию с внешними системами. Осталось провести тестирование.",
       timestamp: "2025-04-26T15:40:00Z",
       read: true,
+      chatId: "chat2"
     },
   ],
   "chat3": [
@@ -127,6 +137,7 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "Алексей, как ваши успехи в изучении новых функций 1С:ERP?",
       timestamp: "2025-04-26T11:30:00Z",
       read: true,
+      chatId: "chat3"
     },
     {
       id: 2,
@@ -135,6 +146,7 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "Добрый день, Иван! Изучил документацию, сейчас практикуюсь на тестовых данных.",
       timestamp: "2025-04-26T11:35:00Z",
       read: true,
+      chatId: "chat3"
     },
     {
       id: 3,
@@ -143,6 +155,7 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "Отлично! Не забудьте пройти тест по 1С:ERP, который появится на следующей неделе.",
       timestamp: "2025-04-26T11:40:00Z",
       read: false,
+      chatId: "chat3"
     },
   ],
   "chat4": [
@@ -153,6 +166,7 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "Здравствуйте, Алексей! Напоминаю, что в пятницу у вас плановая аттестация.",
       timestamp: "2025-04-25T14:30:00Z",
       read: true,
+      chatId: "chat4"
     },
     {
       id: 2,
@@ -161,6 +175,7 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "Добрый день, Мария! Спасибо за напоминание, буду готов.",
       timestamp: "2025-04-25T14:35:00Z",
       read: true,
+      chatId: "chat4"
     },
     {
       id: 3,
@@ -169,6 +184,8 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
       content: "Рекомендую заранее пройти пробный тест в системе.",
       timestamp: "2025-04-25T14:40:00Z",
       read: true,
+      chatId: "chat4"
     },
   ],
 };
+
