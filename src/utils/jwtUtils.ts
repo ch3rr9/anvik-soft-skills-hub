@@ -20,7 +20,7 @@ const secretKey = textEncoder.encode(JWT_SECRET);
  * Creates a JWT token based on user data
  */
 export const generateToken = async (user: UserProfile): Promise<string> => {
-  const payload: JwtPayload = {
+  const payload = {
     userId: user.id,
     email: user.email,
     role: user.role
@@ -40,7 +40,11 @@ export const generateToken = async (user: UserProfile): Promise<string> => {
 export const verifyToken = async (token: string): Promise<JwtPayload | null> => {
   try {
     const { payload } = await jose.jwtVerify(token, secretKey);
-    return payload as JwtPayload;
+    return {
+      userId: payload.userId as string,
+      email: payload.email as string,
+      role: payload.role as string
+    };
   } catch (error) {
     console.error('Token verification error:', error);
     return null;
