@@ -1,6 +1,14 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { AuthState, UserProfile, UserRole } from "../types/auth-types";
+import { 
+  generateToken, 
+  verifyToken, 
+  storeToken, 
+  removeToken, 
+  getStoredToken,
+  isTokenExpired
+} from "../utils/jwtUtils";
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<boolean>;
@@ -52,24 +60,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   useEffect(() => {
-    // Проверка сохраненной сессии при загрузке
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        const userData = JSON.parse(storedUser) as UserProfile;
-        setAuth({
-          isAuthenticated: true,
-          user: userData,
-          isLoading: false,
-        });
-      } catch (e) {
-        console.error("Failed to parse stored user data", e);
-        localStorage.removeItem("user");
+    // Проверяем наличие JWT токена при загрузке
+    const token = getStoredToken();
+    
+    if (token) {
+      // Проверяем срок действия токена
+      if (isTokenExpired(token)) {
+        // Если токен истек, удаляем его и устанавливаем неаутентифицированное состояние
+        removeToken();
         setAuth({ isAuthenticated: false, user: null, isLoading: false });
+        return;
       }
-    } else {
-      setAuth({ isAuthenticated: false, user: null, isLoading: false });
+      
+      // Верифицируем токен
+      const decodedToken = verifyToken(token);
+      
+      if (decodedToken) {
+        // Находим пользователя по данным из токена
+        const user = MOCK_USERS.find(u => u.id === decodedToken.userId);
+        
+        if (user) {
+          // Убираем пароль из объекта пользователя перед сохранением
+          const { password: _, ...userWithoutPassword } = user;
+          
+          setAuth({
+            isAuthenticated: true,
+            user: userWithoutPassword,
+            isLoading: false,
+          });
+          return;
+        }
+      }
     }
+    
+    // Если нет токена или он недействителен
+    setAuth({ isAuthenticated: false, user: null, isLoading: false });
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -85,14 +110,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Убираем пароль из объекта пользователя перед сохранением
       const { password: _, ...userWithoutPassword } = user;
       
+      // Генерируем JWT токен
+      const token = generateToken(userWithoutPassword);
+      
+      // Сохраняем токен в localStorage
+      storeToken(token);
+      
       setAuth({
         isAuthenticated: true,
         user: userWithoutPassword,
         isLoading: false,
       });
       
-      // Сохраняем в локальном хранилище
-      localStorage.setItem("user", JSON.stringify(userWithoutPassword));
+      // Больше не сохраняем объект пользователя в localStorage,
+      // так как теперь восстанавливаем данные из JWT
       return true;
     }
     
@@ -105,7 +136,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user: null,
       isLoading: false,
     });
-    localStorage.removeItem("user");
+    
+    // Удаляем JWT токен
+    removeToken();
   };
 
   const hasPermission = (roles: UserRole[]): boolean => {
