@@ -1,12 +1,12 @@
 
-import { getStoredToken } from './jwtUtils';
+import { getStoredToken, verifyToken } from './jwtUtils';
 
 interface RequestOptions extends RequestInit {
   authRequired?: boolean;
 }
 
 /**
- * Выполняет fetch запрос с автоматическим добавлением JWT токена
+ * Performs a fetch request with automatic JWT token addition
  */
 export async function apiRequest<T>(
   url: string, 
@@ -14,7 +14,7 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const { authRequired = true, ...fetchOptions } = options;
   
-  // Настройки запроса по умолчанию
+  // Default request settings
   const defaultOptions: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
@@ -22,47 +22,52 @@ export async function apiRequest<T>(
     ...fetchOptions,
   };
   
-  // Если требуется авторизация, добавляем токен в заголовки
+  // If authorization is required, add token to headers
   if (authRequired) {
     const token = getStoredToken();
     if (token) {
-      defaultOptions.headers = {
-        ...defaultOptions.headers,
-        Authorization: `Bearer ${token}`,
-      };
+      // Verify token validity
+      const isValid = await verifyToken(token);
+      
+      if (isValid) {
+        defaultOptions.headers = {
+          ...defaultOptions.headers,
+          Authorization: `Bearer ${token}`,
+        };
+      }
     }
   }
   
-  // Выполняем запрос
+  // Perform request
   const response = await fetch(url, defaultOptions);
   
-  // Проверяем статус ответа
+  // Check response status
   if (!response.ok) {
-    // Если статус 401 (Unauthorized), возможно истек токен
+    // If status is 401 (Unauthorized), token might have expired
     if (response.status === 401) {
-      // В реальном приложении здесь можно реализовать логику обновления токена
-      console.error('Ошибка авторизации: токен недействителен или истек');
+      // In a real application, token refresh logic could be implemented here
+      console.error('Authorization error: token is invalid or expired');
     }
     
-    // Пытаемся получить текст ошибки из ответа
+    // Try to get error text from response
     const errorText = await response.text();
     throw new Error(`API Error ${response.status}: ${errorText}`);
   }
   
-  // Парсим JSON ответ
+  // Parse JSON response
   const data = await response.json();
   return data as T;
 }
 
 /**
- * Функция GET запроса
+ * GET request function
  */
 export function get<T>(url: string, options: RequestOptions = {}): Promise<T> {
   return apiRequest<T>(url, { ...options, method: 'GET' });
 }
 
 /**
- * Функция POST запроса
+ * POST request function
  */
 export function post<T>(url: string, data: any, options: RequestOptions = {}): Promise<T> {
   return apiRequest<T>(url, {
@@ -73,7 +78,7 @@ export function post<T>(url: string, data: any, options: RequestOptions = {}): P
 }
 
 /**
- * Функция PUT запроса
+ * PUT request function
  */
 export function put<T>(url: string, data: any, options: RequestOptions = {}): Promise<T> {
   return apiRequest<T>(url, {
@@ -84,7 +89,7 @@ export function put<T>(url: string, data: any, options: RequestOptions = {}): Pr
 }
 
 /**
- * Функция DELETE запроса
+ * DELETE request function
  */
 export function del<T>(url: string, options: RequestOptions = {}): Promise<T> {
   return apiRequest<T>(url, { ...options, method: 'DELETE' });

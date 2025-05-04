@@ -18,7 +18,7 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Данные пользователей (в реальном приложении должны быть на бэкенде)
+// User data (in a real application, this should be on the backend)
 const MOCK_USERS = [
   {
     id: "1",
@@ -60,71 +60,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   useEffect(() => {
-    // Проверяем наличие JWT токена при загрузке
-    const token = getStoredToken();
-    
-    if (token) {
-      // Проверяем срок действия токена
-      if (isTokenExpired(token)) {
-        // Если токен истек, удаляем его и устанавливаем неаутентифицированное состояние
-        removeToken();
-        setAuth({ isAuthenticated: false, user: null, isLoading: false });
-        return;
-      }
+    // Check for JWT token on load
+    const validateToken = async () => {
+      const token = getStoredToken();
       
-      // Верифицируем токен
-      const decodedToken = verifyToken(token);
-      
-      if (decodedToken) {
-        // Находим пользователя по данным из токена
-        const user = MOCK_USERS.find(u => u.id === decodedToken.userId);
-        
-        if (user) {
-          // Убираем пароль из объекта пользователя перед сохранением
-          const { password: _, ...userWithoutPassword } = user;
-          
-          setAuth({
-            isAuthenticated: true,
-            user: userWithoutPassword,
-            isLoading: false,
-          });
+      if (token) {
+        // Check if token has expired
+        if (isTokenExpired(token)) {
+          // If token has expired, remove it and set unauthenticated state
+          removeToken();
+          setAuth({ isAuthenticated: false, user: null, isLoading: false });
           return;
         }
+        
+        // Verify token
+        const decodedToken = await verifyToken(token);
+        
+        if (decodedToken) {
+          // Find user based on token data
+          const user = MOCK_USERS.find(u => u.id === decodedToken.userId);
+          
+          if (user) {
+            // Remove password from user object before saving
+            const { password: _, ...userWithoutPassword } = user;
+            
+            setAuth({
+              isAuthenticated: true,
+              user: userWithoutPassword,
+              isLoading: false,
+            });
+            return;
+          }
+        }
       }
-    }
+      
+      // If no token or token is invalid
+      setAuth({ isAuthenticated: false, user: null, isLoading: false });
+    };
     
-    // Если нет токена или он недействителен
-    setAuth({ isAuthenticated: false, user: null, isLoading: false });
+    validateToken();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Имитация задержки сети
+    // Simulate network delay
     await new Promise((resolve) => setTimeout(resolve, 800));
     
-    // Поиск пользователя в моковых данных
+    // Find user in mock data
     const user = MOCK_USERS.find(
       (u) => u.email === email && u.password === password
     );
 
     if (user) {
-      // Убираем пароль из объекта пользователя перед сохранением
+      // Remove password from user object before saving
       const { password: _, ...userWithoutPassword } = user;
       
-      // Генерируем JWT токен
-      const token = generateToken(userWithoutPassword);
-      
-      // Сохраняем токен в localStorage
-      storeToken(token);
-      
-      setAuth({
-        isAuthenticated: true,
-        user: userWithoutPassword,
-        isLoading: false,
-      });
-      
-      // Больше не сохраняем объект пользователя в localStorage,
-      // так как теперь восстанавливаем данные из JWT
-      return true;
+      try {
+        // Generate JWT token
+        const token = await generateToken(userWithoutPassword);
+        
+        // Save token in localStorage
+        storeToken(token);
+        
+        setAuth({
+          isAuthenticated: true,
+          user: userWithoutPassword,
+          isLoading: false,
+        });
+        
+        return true;
+      } catch (error) {
+        console.error("Error generating token:", error);
+        return false;
+      }
     }
     
     return false;
@@ -137,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isLoading: false,
     });
     
-    // Удаляем JWT токен
+    // Remove JWT token
     removeToken();
   };
 

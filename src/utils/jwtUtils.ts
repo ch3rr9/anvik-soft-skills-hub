@@ -1,8 +1,8 @@
 
-import jwt from 'jsonwebtoken';
+import * as jose from 'jose';
 import { UserProfile } from '../types/auth-types';
 
-// Секретный ключ для подписи токенов (в реальном приложении должен быть в env переменных)
+// Secret key for signing tokens (in a real application, this should be in env variables)
 const JWT_SECRET = 'anvik-soft-skills-hub-secret-key-2024';
 const JWT_EXPIRY = '24h';
 
@@ -12,62 +12,71 @@ export interface JwtPayload {
   role: string;
 }
 
+// Convert string to Uint8Array for use with jose
+const textEncoder = new TextEncoder();
+const secretKey = textEncoder.encode(JWT_SECRET);
+
 /**
- * Создает JWT токен на основе данных пользователя
+ * Creates a JWT token based on user data
  */
-export const generateToken = (user: UserProfile): string => {
+export const generateToken = async (user: UserProfile): Promise<string> => {
   const payload: JwtPayload = {
     userId: user.id,
     email: user.email,
     role: user.role
   };
 
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+  const token = await new jose.SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime(JWT_EXPIRY)
+    .sign(secretKey);
+  
+  return token;
 };
 
 /**
- * Проверяет валидность токена и возвращает декодированные данные
+ * Verifies token validity and returns decoded data
  */
-export const verifyToken = (token: string): JwtPayload | null => {
+export const verifyToken = async (token: string): Promise<JwtPayload | null> => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    return decoded;
+    const { payload } = await jose.jwtVerify(token, secretKey);
+    return payload as JwtPayload;
   } catch (error) {
-    console.error('Ошибка верификации токена:', error);
+    console.error('Token verification error:', error);
     return null;
   }
 };
 
 /**
- * Извлекает токен из локального хранилища
+ * Retrieves token from local storage
  */
 export const getStoredToken = (): string | null => {
   return localStorage.getItem('auth_token');
 };
 
 /**
- * Сохраняет токен в локальное хранилище
+ * Stores token in local storage
  */
 export const storeToken = (token: string): void => {
   localStorage.setItem('auth_token', token);
 };
 
 /**
- * Удаляет токен из локального хранилища
+ * Removes token from local storage
  */
 export const removeToken = (): void => {
   localStorage.removeItem('auth_token');
 };
 
 /**
- * Проверяет, истек ли срок действия токена
+ * Checks if the token has expired
  */
 export const isTokenExpired = (token: string): boolean => {
   try {
-    const decoded = jwt.decode(token) as { exp: number };
+    const decoded = jose.decodeJwt(token);
     if (!decoded || !decoded.exp) return true;
     
-    // Сравниваем время истечения с текущим временем
+    // Compare expiration time with current time
     const currentTime = Date.now() / 1000;
     return decoded.exp < currentTime;
   } catch {
