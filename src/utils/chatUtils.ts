@@ -114,9 +114,9 @@ export const saveMessage = async (message: Omit<Message, "id">): Promise<Message
   // Convert the chatId to a number since the RPC function expects a number
   const chatIdNumber = parseInt(message.chatId, 10);
   
-  // Используем явное приведение типа для аргумента chat_id
+  // Используем корректную типизацию для аргумента chat_id
   const { error: updateError } = await supabase.rpc('increment_unread_count', { 
-    chat_id: chatIdNumber as unknown as number  // Явное приведение типа
+    chat_id: chatIdNumber
   });
   
   if (updateError) {
