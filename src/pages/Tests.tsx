@@ -12,6 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import { Test, TestResult } from "@/types/test-types";
 import { PSYCH_TEST, analyzePsychTestResults } from "@/data/psychTest";
 import { supabase } from "@/integrations/supabase/client";
+import { Json } from "@/integrations/supabase/types";
 
 // Компонент для отображения списка тестов
 const TestsList: React.FC<{
@@ -99,6 +100,8 @@ const PsychTest: React.FC<{
   };
   
   const handleSubmit = async () => {
+    if (!user) return;
+    
     const { needsVacation, recommendation } = analyzePsychTestResults(answers);
     
     const score = answers.reduce((acc, answer) => acc + answer, 0);
@@ -222,8 +225,22 @@ const Tests = () => {
           throw testsError;
         }
         
+        // Преобразование данных из базы в наш формат Test
+        const mappedTests: Test[] = testsData?.map(test => ({
+          id: test.id,
+          title: test.title,
+          description: test.description,
+          category: test.category,
+          questions: test.questions as any,
+          timeLimit: test.time_limit,
+          passingScore: test.passing_score,
+          availableRoles: test.available_roles as string[],
+          createdBy: test.created_by,
+          createdAt: test.created_at
+        })) || [];
+        
         // Добавление психологического теста к списку
-        const allTests = [...(testsData || []), PSYCH_TEST];
+        const allTests = [...mappedTests, PSYCH_TEST];
         setTests(allTests);
         
         if (user) {
@@ -237,7 +254,19 @@ const Tests = () => {
             throw resultsError;
           }
           
-          setTestResults(resultsData || []);
+          // Преобразование данных из базы в наш формат TestResult
+          const mappedResults: TestResult[] = resultsData?.map(result => ({
+            id: result.id,
+            testId: result.test_id,
+            userId: result.user_id,
+            score: result.score,
+            maxScore: result.max_score,
+            passedAt: result.passed_at,
+            passed: result.passed,
+            answers: result.answers as number[]
+          })) || [];
+          
+          setTestResults(mappedResults);
         }
       } catch (error) {
         console.error('Error fetching tests data:', error);
@@ -255,21 +284,50 @@ const Tests = () => {
   }, [user]);
   
   // Сохранение результата теста
-  const saveTestResult = async (result: Omit<TestResult, "id">) => {
+  const saveTestResult = async (result: Omit<TestResult, "id">): Promise<TestResult | null> => {
     try {
+      // Преобразуем формат для соответствия Supabase
+      const supabaseResult = {
+        test_id: result.testId,
+        user_id: result.userId,
+        score: result.score,
+        max_score: result.maxScore,
+        passed_at: result.passedAt,
+        passed: result.passed,
+        answers: result.answers as Json,
+        recommendation: analyzePsychTestResults(result.answers).recommendation,
+        needs_vacation: analyzePsychTestResults(result.answers).needsVacation
+      };
+      
       const { data, error } = await supabase
         .from('test_results')
-        .insert([result])
+        .insert([supabaseResult])
         .select();
         
       if (error) {
         throw error;
       }
       
-      // Обновление результатов в локальном состоянии
-      setTestResults(prevResults => [...prevResults, data[0]]);
+      if (!data || data.length === 0) {
+        return null;
+      }
       
-      return data[0];
+      // Преобразование ответа из базы в наш формат TestResult
+      const savedResult: TestResult = {
+        id: data[0].id,
+        testId: data[0].test_id,
+        userId: data[0].user_id,
+        score: data[0].score,
+        maxScore: data[0].max_score,
+        passedAt: data[0].passed_at,
+        passed: data[0].passed,
+        answers: data[0].answers as number[]
+      };
+      
+      // Обновление результатов в локальном состоянии
+      setTestResults(prevResults => [...prevResults, savedResult]);
+      
+      return savedResult;
     } catch (error) {
       console.error('Error saving test result:', error);
       toast({

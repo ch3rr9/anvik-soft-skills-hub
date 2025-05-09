@@ -63,14 +63,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: profile } = await supabase
         .from("users")
         .select("*")
-        .eq("id", userId)
+        .eq("id", Number(userId))
         .single();
       
       if (profile) {
         setAuth({
           isAuthenticated: true,
           user: {
-            id: profile.id,
+            id: String(profile.id),
             name: profile.name,
             email: profile.email,
             role: profile.role as UserRole,

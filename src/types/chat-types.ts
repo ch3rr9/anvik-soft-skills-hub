@@ -1,19 +1,20 @@
 
 export interface Message {
   id: number;
+  chatId: string;
   senderId: string;
   senderName: string;
   content: string;
   timestamp: string;
   read: boolean;
-  chatId: string; // Добавляем идентификатор чата для правильного сохранения
 }
 
 export interface ChatRoom {
-  id: string;
+  id: number;
   name: string;
   type: "direct" | "group";
   participants: string[];
   lastMessage?: Message;
   unreadCount: number;
+  created_at?: string;
 }

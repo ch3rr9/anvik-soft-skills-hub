@@ -17,6 +17,7 @@ interface ChatSidebarProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
   onChatSelect: (chat: ChatRoom) => void;
+  isLoading: boolean;
 }
 
 const ChatSidebar = ({ 
@@ -24,7 +25,8 @@ const ChatSidebar = ({
   selectedChat, 
   searchTerm, 
   onSearchChange, 
-  onChatSelect 
+  onChatSelect,
+  isLoading
 }: ChatSidebarProps) => {
   const createNewChat = () => {
     toast({

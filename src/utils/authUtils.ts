@@ -29,7 +29,7 @@ export const registerUser = async (
     const { error: profileError } = await supabase
       .from("users")
       .insert({
-        id: authData.user.id,
+        id: Number(authData.user.id), // Конвертация строки в число
         name: userData.name,
         email: userData.email,
         role: userData.role,
@@ -93,7 +93,7 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
   const { data: userData } = await supabase
     .from("users")
     .select("*")
-    .eq("id", authData.session.user.id)
+    .eq("id", Number(authData.session.user.id))
     .single();
   
   if (!userData) {
@@ -101,7 +101,7 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
   }
   
   return {
-    id: userData.id,
+    id: String(userData.id), // Конвертация числа в строку для соответствия с UserProfile
     name: userData.name,
     email: userData.email,
     role: userData.role,

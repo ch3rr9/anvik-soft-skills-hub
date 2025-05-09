@@ -98,7 +98,18 @@ const Chat = () => {
         .on('postgres_changes', 
           { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${selectedChat.id}` },
           (payload) => {
-            const newMessage = payload.new as Message;
+            const newMessageData = payload.new as any;
+            
+            // Преобразуем новое сообщение к нашему формату
+            const newMessage: Message = {
+              id: newMessageData.id,
+              chatId: newMessageData.chat_id,
+              senderId: newMessageData.sender_id,
+              senderName: newMessageData.sender_name,
+              content: newMessageData.content,
+              timestamp: newMessageData.timestamp,
+              read: newMessageData.read
+            };
             
             // Добавляем новое сообщение в стейт
             setMessages(prev => [...prev, newMessage]);
@@ -121,7 +132,7 @@ const Chat = () => {
   const sendMessage = async (content: string) => {
     if (!selectedChat || !user) return;
     
-    const newMessage = {
+    const newMessage: Omit<Message, "id"> = {
       chatId: selectedChat.id,
       senderId: user.id,
       senderName: user.name,

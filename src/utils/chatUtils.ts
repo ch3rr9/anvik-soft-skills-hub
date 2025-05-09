@@ -1,6 +1,7 @@
 
 import { Message, ChatRoom } from "@/types/chat-types";
 import { supabase } from "@/integrations/supabase/client";
+import { Json } from "@/integrations/supabase/types";
 
 export const formatMessageTime = (timestamp: string) => {
   return new Date(timestamp).toLocaleTimeString('ru-RU', {
@@ -55,14 +56,21 @@ export const getAllChats = async (): Promise<ChatRoom[]> => {
     return [];
   }
   
-  return data || [];
+  return data?.map(chat => ({
+    id: chat.id,
+    name: chat.name,
+    type: chat.type as "direct" | "group",
+    participants: chat.participants as string[],
+    unreadCount: chat.unread_count,
+    created_at: chat.created_at
+  })) || [];
 };
 
-export const getMessagesForChat = async (chatId: string): Promise<Message[]> => {
+export const getMessagesForChat = async (chatId: number): Promise<Message[]> => {
   const { data, error } = await supabase
     .from('messages')
     .select('*')
-    .eq('chat_id', chatId)
+    .eq('chat_id', String(chatId))
     .order('timestamp', { ascending: true });
     
   if (error) {
@@ -70,15 +78,23 @@ export const getMessagesForChat = async (chatId: string): Promise<Message[]> => 
     return [];
   }
   
-  return data || [];
+  return data?.map(msg => ({
+    id: msg.id,
+    chatId: msg.chat_id,
+    senderId: msg.sender_id,
+    senderName: msg.sender_name,
+    content: msg.content,
+    timestamp: msg.timestamp,
+    read: msg.read
+  })) || [];
 };
 
-export const saveMessage = async (message: Message): Promise<Message | null> => {
+export const saveMessage = async (message: Omit<Message, "id">): Promise<Message | null> => {
   const { data, error } = await supabase
     .from('messages')
     .insert([
       { 
-        chat_id: message.chatId,
+        chat_id: String(message.chatId),
         sender_id: message.senderId,
         sender_name: message.senderName,
         content: message.content,
@@ -96,21 +112,29 @@ export const saveMessage = async (message: Message): Promise<Message | null> => 
   
   // Обновление счетчика непрочитанных сообщений
   const { error: updateError } = await supabase.rpc('increment_unread_count', { 
-    chat_id: message.chatId
+    chat_id: String(message.chatId)
   });
   
   if (updateError) {
     console.error('Error updating unread count:', updateError);
   }
   
-  return data;
+  return {
+    id: data.id,
+    chatId: data.chat_id,
+    senderId: data.sender_id,
+    senderName: data.sender_name,
+    content: data.content,
+    timestamp: data.timestamp,
+    read: data.read
+  };
 };
 
-export const markMessagesAsRead = async (chatId: string, userId: string): Promise<void> => {
+export const markMessagesAsRead = async (chatId: number, userId: string): Promise<void> => {
   const { error } = await supabase
     .from('messages')
     .update({ read: true })
-    .eq('chat_id', chatId)
+    .eq('chat_id', String(chatId))
     .neq('sender_id', userId);
     
   if (error) {
@@ -128,13 +152,20 @@ export const markMessagesAsRead = async (chatId: string, userId: string): Promis
   }
 };
 
-export const updateChatRoomsWithMessages = async (chatRooms: ChatRoom[]): Promise<ChatRoom[]> => {
+export const updateChatRoomsWithMessages = async (chats: any[]): Promise<ChatRoom[]> => {
   const chatsWithMessages = await Promise.all(
-    chatRooms.map(async (chat) => {
+    chats.map(async (chat) => {
       const messages = await getMessagesForChat(chat.id);
       
       if (messages.length === 0) {
-        return chat;
+        return {
+          id: chat.id,
+          name: chat.name,
+          type: chat.type as "direct" | "group",
+          participants: chat.participants as string[],
+          unreadCount: chat.unread_count,
+          created_at: chat.created_at
+        };
       }
       
       // Сортировка по времени (новые первыми)
@@ -145,8 +176,13 @@ export const updateChatRoomsWithMessages = async (chatRooms: ChatRoom[]): Promis
       const lastMessage = sortedMessages[0];
       
       return {
-        ...chat,
+        id: chat.id,
+        name: chat.name,
+        type: chat.type as "direct" | "group",
+        participants: chat.participants as string[],
+        unreadCount: chat.unread_count,
         lastMessage,
+        created_at: chat.created_at
       };
     })
   );
