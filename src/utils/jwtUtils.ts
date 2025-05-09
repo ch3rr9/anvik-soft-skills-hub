@@ -1,4 +1,7 @@
 
+// Этот файл можно удалить после полной миграции на Supabase,
+// так как аутентификация теперь обрабатывается через Supabase
+
 import * as jose from 'jose';
 import { UserProfile } from '../types/auth-types';
 

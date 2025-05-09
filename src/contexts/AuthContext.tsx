@@ -1,14 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { AuthState, UserProfile, UserRole } from "../types/auth-types";
-import { 
-  generateToken, 
-  verifyToken, 
-  storeToken, 
-  removeToken, 
-  getStoredToken,
-  isTokenExpired
-} from "../utils/jwtUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<boolean>;
@@ -18,40 +11,6 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// User data (in a real application, this should be on the backend)
-const MOCK_USERS = [
-  {
-    id: "1",
-    name: "Иван Директоров",
-    email: "director@anvik-soft.com",
-    password: "director123",
-    role: "director" as UserRole,
-    department: "Руководство",
-    position: "Директор",
-    avatarUrl: "",
-  },
-  {
-    id: "2",
-    name: "Мария Кадрова",
-    email: "hr@anvik-soft.com",
-    password: "hr123",
-    role: "manager" as UserRole,
-    department: "HR",
-    position: "Менеджер по персоналу",
-    avatarUrl: "",
-  },
-  {
-    id: "3",
-    name: "Алексей Программистов",
-    email: "employee@anvik-soft.com",
-    password: "employee123",
-    role: "employee" as UserRole,
-    department: "Разработка",
-    position: "1С Разработчик",
-    avatarUrl: "",
-  },
-];
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [auth, setAuth] = useState<AuthState>({
     isAuthenticated: false,
@@ -59,93 +18,108 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isLoading: true,
   });
 
+  // Проверка сессии и инициализация состояния
   useEffect(() => {
-    // Check for JWT token on load
-    const validateToken = async () => {
-      const token = getStoredToken();
-      
-      if (token) {
-        // Check if token has expired
-        if (isTokenExpired(token)) {
-          // If token has expired, remove it and set unauthenticated state
-          removeToken();
-          setAuth({ isAuthenticated: false, user: null, isLoading: false });
-          return;
-        }
-        
-        // Verify token
-        const decodedToken = await verifyToken(token);
-        
-        if (decodedToken) {
-          // Find user based on token data
-          const user = MOCK_USERS.find(u => u.id === decodedToken.userId);
-          
-          if (user) {
-            // Remove password from user object before saving
-            const { password: _, ...userWithoutPassword } = user;
-            
+    const initAuth = async () => {
+      // Установка слушателя изменений авторизации
+      const { data: authListener } = supabase.auth.onAuthStateChange(
+        (event, session) => {
+          if (event === "SIGNED_IN" && session) {
+            fetchUserProfile(session.user.id);
+          } else if (event === "SIGNED_OUT") {
             setAuth({
-              isAuthenticated: true,
-              user: userWithoutPassword,
+              isAuthenticated: false,
+              user: null,
               isLoading: false,
             });
-            return;
           }
         }
-      }
+      );
       
-      // If no token or token is invalid
-      setAuth({ isAuthenticated: false, user: null, isLoading: false });
-    };
-    
-    validateToken();
-  }, []);
-
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    
-    // Find user in mock data
-    const user = MOCK_USERS.find(
-      (u) => u.email === email && u.password === password
-    );
-
-    if (user) {
-      // Remove password from user object before saving
-      const { password: _, ...userWithoutPassword } = user;
-      
-      try {
-        // Generate JWT token
-        const token = await generateToken(userWithoutPassword);
-        
-        // Save token in localStorage
-        storeToken(token);
-        
+      // Получение текущей сессии
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await fetchUserProfile(session.user.id);
+      } else {
         setAuth({
-          isAuthenticated: true,
-          user: userWithoutPassword,
+          isAuthenticated: false,
+          user: null,
           isLoading: false,
         });
-        
-        return true;
-      } catch (error) {
-        console.error("Error generating token:", error);
-        return false;
       }
-    }
+      
+      return () => {
+        // Очистка слушателя при размонтировании
+        authListener.subscription.unsubscribe();
+      };
+    };
     
-    return false;
+    initAuth();
+  }, []);
+  
+  // Получение профиля пользователя из базы данных
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .single();
+      
+      if (profile) {
+        setAuth({
+          isAuthenticated: true,
+          user: {
+            id: profile.id,
+            name: profile.name,
+            email: profile.email,
+            role: profile.role as UserRole,
+            department: profile.department,
+            position: profile.position,
+            avatarUrl: profile.avatar_url
+          },
+          isLoading: false,
+        });
+      } else {
+        // Если профиль не найден, выходим из системы
+        supabase.auth.signOut();
+        setAuth({
+          isAuthenticated: false,
+          user: null,
+          isLoading: false,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      setAuth({
+        isAuthenticated: false,
+        user: null,
+        isLoading: false,
+      });
+    }
   };
 
-  const logout = () => {
-    setAuth({
-      isAuthenticated: false,
-      user: null,
-      isLoading: false,
-    });
-    
-    // Remove JWT token
-    removeToken();
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error("Login error:", error.message);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error during login:", error);
+      return false;
+    }
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
   const hasPermission = (roles: UserRole[]): boolean => {

@@ -13,29 +13,59 @@ export type Database = {
         Row: {
           created_at: string
           id: number
+          name: string
+          participants: Json
+          type: string
+          unread_count: number
         }
         Insert: {
           created_at?: string
           id?: number
+          name?: string
+          participants?: Json
+          type?: string
+          unread_count?: number
         }
         Update: {
           created_at?: string
           id?: number
+          name?: string
+          participants?: Json
+          type?: string
+          unread_count?: number
         }
         Relationships: []
       }
       messages: {
         Row: {
+          chat_id: string
+          content: string
           created_at: string
           id: number
+          read: boolean
+          sender_id: string
+          sender_name: string
+          timestamp: string
         }
         Insert: {
+          chat_id: string
+          content?: string
           created_at?: string
           id?: number
+          read?: boolean
+          sender_id: string
+          sender_name?: string
+          timestamp?: string
         }
         Update: {
+          chat_id?: string
+          content?: string
           created_at?: string
           id?: number
+          read?: boolean
+          sender_id?: string
+          sender_name?: string
+          timestamp?: string
         }
         Relationships: []
       }
@@ -47,46 +77,115 @@ export type Database = {
       }
       test_results: {
         Row: {
+          answers: Json
           created_at: string
           id: number
+          max_score: number
+          needs_vacation: boolean | null
+          passed: boolean
+          passed_at: string
+          recommendation: string | null
+          score: number
+          test_id: number
+          user_id: string
         }
         Insert: {
+          answers?: Json
           created_at?: string
           id?: number
+          max_score?: number
+          needs_vacation?: boolean | null
+          passed?: boolean
+          passed_at?: string
+          recommendation?: string | null
+          score?: number
+          test_id: number
+          user_id: string
         }
         Update: {
+          answers?: Json
           created_at?: string
           id?: number
+          max_score?: number
+          needs_vacation?: boolean | null
+          passed?: boolean
+          passed_at?: string
+          recommendation?: string | null
+          score?: number
+          test_id?: number
+          user_id?: string
         }
         Relationships: []
       }
       tests: {
         Row: {
+          available_roles: Json
+          category: string
           created_at: string
+          created_by: string
+          description: string
           id: number
+          passing_score: number
+          questions: Json
+          time_limit: number
+          title: string
         }
         Insert: {
+          available_roles?: Json
+          category?: string
           created_at?: string
+          created_by?: string
+          description?: string
           id?: number
+          passing_score?: number
+          questions?: Json
+          time_limit?: number
+          title?: string
         }
         Update: {
+          available_roles?: Json
+          category?: string
           created_at?: string
+          created_by?: string
+          description?: string
           id?: number
+          passing_score?: number
+          questions?: Json
+          time_limit?: number
+          title?: string
         }
         Relationships: []
       }
       users: {
         Row: {
+          avatar_url: string | null
           created_at: string
+          department: string | null
+          email: string
           id: number
+          name: string
+          position: string | null
+          role: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
+          department?: string | null
+          email?: string
           id?: number
+          name?: string
+          position?: string | null
+          role?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
+          department?: string | null
+          email?: string
           id?: number
+          name?: string
+          position?: string | null
+          role?: string
         }
         Relationships: []
       }

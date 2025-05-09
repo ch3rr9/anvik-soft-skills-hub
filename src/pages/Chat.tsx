@@ -4,12 +4,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { MessageSquare } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatRoom, Message } from "@/types/chat-types";
-import { MOCK_CHATS } from "@/data/chatData";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   groupMessagesByDate, 
   getMessagesForChat, 
   saveMessage, 
-  updateChatRoomsWithMessages 
+  updateChatRoomsWithMessages,
+  markMessagesAsRead
 } from "@/utils/chatUtils";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatHeader from "@/components/chat/ChatHeader";
@@ -22,79 +23,127 @@ const Chat = () => {
   const [selectedChat, setSelectedChat] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [chatRooms, setChatRooms] = useState<ChatRoom[]>(MOCK_CHATS);
+  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Инициализация при загрузке компонента
+  // Загрузка чатов при монтировании компонента
   useEffect(() => {
-    // Обновляем чаты с учетом сохраненных сообщений
-    const updatedChatRooms = updateChatRoomsWithMessages(MOCK_CHATS);
-    setChatRooms(updatedChatRooms);
+    const fetchChats = async () => {
+      setIsLoading(true);
+      try {
+        const { data: chats, error } = await supabase
+          .from('chats')
+          .select('*');
+          
+        if (error) {
+          console.error('Error fetching chats:', error);
+          toast({ 
+            title: "Ошибка загрузки", 
+            description: "Не удалось загрузить чаты", 
+            variant: "destructive" 
+          });
+          return;
+        }
+        
+        if (chats) {
+          const updatedChats = await updateChatRoomsWithMessages(chats);
+          setChatRooms(updatedChats);
+        }
+      } catch (e) {
+        console.error('Error:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchChats();
+    
+    // Подписка на обновления чатов
+    const chatsSubscription = supabase
+      .channel('chats_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'chats' },
+        (payload) => { fetchChats(); }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(chatsSubscription);
+    };
   }, []);
   
   // Загрузка сообщений при выборе чата
   useEffect(() => {
-    if (selectedChat) {
-      // Получаем сообщения из localStorage
-      const chatMessages = getMessagesForChat(selectedChat.id);
-      setMessages(chatMessages);
+    if (selectedChat && user) {
+      const fetchMessages = async () => {
+        const chatMessages = await getMessagesForChat(selectedChat.id);
+        setMessages(chatMessages);
+        
+        // Отметить сообщения как прочитанные
+        await markMessagesAsRead(selectedChat.id, user.id);
+        
+        // Обновить список чатов, сбросив счётчик непрочитанных
+        setChatRooms(prevChats => 
+          prevChats.map(chat => 
+            chat.id === selectedChat.id ? { ...chat, unreadCount: 0 } : chat
+          )
+        );
+      };
       
-      // Обновляем счетчик непрочитанных
-      setChatRooms(prevChats => 
-        prevChats.map(chat => 
-          chat.id === selectedChat.id ? { ...chat, unreadCount: 0 } : chat
+      fetchMessages();
+      
+      // Подписка на новые сообщения в выбранном чате
+      const messagesSubscription = supabase
+        .channel(`messages_${selectedChat.id}`)
+        .on('postgres_changes', 
+          { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${selectedChat.id}` },
+          (payload) => {
+            const newMessage = payload.new as Message;
+            
+            // Добавляем новое сообщение в стейт
+            setMessages(prev => [...prev, newMessage]);
+            
+            // Если сообщение от другого пользователя, отмечаем как прочитанное
+            if (newMessage.senderId !== user.id) {
+              markMessagesAsRead(selectedChat.id, user.id);
+            }
+          }
         )
-      );
-    }
-  }, [selectedChat]);
-  
-  // Периодическая проверка новых сообщений
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (selectedChat) {
-        const updatedMessages = getMessagesForChat(selectedChat.id);
-        // Проверка на новые сообщения
-        if (JSON.stringify(updatedMessages) !== JSON.stringify(messages)) {
-          setMessages(updatedMessages);
-        }
-      }
+        .subscribe();
       
-      // Обновляем все чаты с учетом новых сообщений
-      const updatedChatRooms = updateChatRoomsWithMessages(MOCK_CHATS);
-      setChatRooms(updatedChatRooms);
-    }, 3000);
-    
-    return () => clearInterval(interval);
-  }, [selectedChat, messages]);
+      return () => {
+        supabase.removeChannel(messagesSubscription);
+      };
+    }
+  }, [selectedChat, user]);
   
   // Отправка сообщения
-  const sendMessage = (content: string) => {
+  const sendMessage = async (content: string) => {
     if (!selectedChat || !user) return;
     
-    const existingMessages = getMessagesForChat(selectedChat.id);
-    const newId = existingMessages.length > 0 
-      ? Math.max(...existingMessages.map(m => m.id)) + 1 
-      : 1;
-    
-    const newMessage: Message = {
-      id: newId,
+    const newMessage = {
+      chatId: selectedChat.id,
       senderId: user.id,
       senderName: user.name,
       content,
       timestamp: new Date().toISOString(),
       read: false,
-      chatId: selectedChat.id,
     };
     
-    // Сохраняем в localStorage и обновляем UI
-    saveMessage(newMessage);
+    const savedMessage = await saveMessage(newMessage);
     
-    // Обновляем локальное состояние сообщений
-    setMessages([...messages, newMessage]);
-    
-    toast({
-      title: "Сообщение отправлено",
-      description: `В чат "${selectedChat.name}"`,
-    });
+    if (savedMessage) {
+      toast({
+        title: "Сообщение отправлено",
+        description: `В чат "${selectedChat.name}"`,
+      });
+    } else {
+      toast({
+        title: "Ошибка отправки",
+        description: "Не удалось отправить сообщение",
+        variant: "destructive"
+      });
+    }
   };
   
   // Фильтрация чатов по поисковому запросу
@@ -113,6 +162,7 @@ const Chat = () => {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onChatSelect={setSelectedChat}
+        isLoading={isLoading}
       />
       
       <div className="flex-1 flex flex-col">

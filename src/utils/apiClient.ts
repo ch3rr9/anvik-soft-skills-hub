@@ -1,5 +1,5 @@
 
-import { getStoredToken, verifyToken } from './jwtUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface RequestOptions extends RequestInit {
   authRequired?: boolean;
@@ -7,6 +7,8 @@ interface RequestOptions extends RequestInit {
 
 /**
  * Performs a fetch request with automatic JWT token addition
+ * This функция осталась для совместимости с существующим кодом,
+ * но теперь использует Supabase для запросов
  */
 export async function apiRequest<T>(
   url: string, 
@@ -14,47 +16,29 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const { authRequired = true, ...fetchOptions } = options;
   
-  // Default request settings
-  const defaultOptions: RequestInit = {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    ...fetchOptions,
-  };
-  
-  // If authorization is required, add token to headers
+  // Проверка аутентификации если требуется
   if (authRequired) {
-    const token = getStoredToken();
-    if (token) {
-      // Verify token validity
-      const isValid = await verifyToken(token);
-      
-      if (isValid) {
-        defaultOptions.headers = {
-          ...defaultOptions.headers,
-          Authorization: `Bearer ${token}`,
-        };
-      }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Unauthorized');
     }
   }
   
-  // Perform request
-  const response = await fetch(url, defaultOptions);
+  // Выполнение запроса через fetch (для совместимости)
+  const response = await fetch(url, fetchOptions);
   
-  // Check response status
+  // Проверка ответа
   if (!response.ok) {
-    // If status is 401 (Unauthorized), token might have expired
     if (response.status === 401) {
-      // In a real application, token refresh logic could be implemented here
       console.error('Authorization error: token is invalid or expired');
     }
     
-    // Try to get error text from response
+    // Попытка получить текст ошибки
     const errorText = await response.text();
     throw new Error(`API Error ${response.status}: ${errorText}`);
   }
   
-  // Parse JSON response
+  // Парсинг JSON-ответа
   const data = await response.json();
   return data as T;
 }

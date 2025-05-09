@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { User, Briefcase, Building, Mail } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const ProfileInfo = () => {
   const { user } = useAuth();
@@ -22,6 +23,32 @@ const ProfileInfo = () => {
   };
   
   const roleInfo = roleLabels[user?.role || "employee"];
+
+  // Обновление информации пользователя
+  const updateUserProfile = async (field: string, value: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ [field]: value })
+        .eq('id', user.id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Данные обновлены",
+        description: "Ваша информация успешно обновлена",
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Ошибка обновления",
+        description: "Не удалось обновить данные",
+        variant: "destructive"
+      });
+    }
+  };
   
   return (
     <div className="space-y-6">

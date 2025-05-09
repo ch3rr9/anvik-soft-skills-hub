@@ -1,5 +1,6 @@
 
 import { Message, ChatRoom } from "@/types/chat-types";
+import { supabase } from "@/integrations/supabase/client";
 
 export const formatMessageTime = (timestamp: string) => {
   return new Date(timestamp).toLocaleTimeString('ru-RU', {
@@ -43,60 +44,112 @@ export const groupMessagesByDate = (messages: Message[]) => {
   return groups;
 };
 
-// Функции для работы с локальным хранилищем сообщений
-const STORAGE_KEY = 'anvik_chat_messages';
-
-export const getAllMessages = (): Record<string, Message[]> => {
-  const storedMessages = localStorage.getItem(STORAGE_KEY);
-  if (storedMessages) {
-    try {
-      return JSON.parse(storedMessages);
-    } catch (e) {
-      console.error('Failed to parse stored messages', e);
-      return {};
-    }
-  }
-  return {};
-};
-
-export const getMessagesForChat = (chatId: string): Message[] => {
-  const allMessages = getAllMessages();
-  return allMessages[chatId] || [];
-};
-
-export const saveMessage = (message: Message): void => {
-  const allMessages = getAllMessages();
-  if (!allMessages[message.chatId]) {
-    allMessages[message.chatId] = [];
+// Функции для работы с чатами из Supabase
+export const getAllChats = async (): Promise<ChatRoom[]> => {
+  const { data, error } = await supabase
+    .from('chats')
+    .select('*');
+    
+  if (error) {
+    console.error('Error fetching chats:', error);
+    return [];
   }
   
-  // Проверяем, не дубликат ли это сообщение
-  const isDuplicate = allMessages[message.chatId].some(
-    msg => msg.id === message.id && msg.timestamp === message.timestamp
+  return data || [];
+};
+
+export const getMessagesForChat = async (chatId: string): Promise<Message[]> => {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('chat_id', chatId)
+    .order('timestamp', { ascending: true });
+    
+  if (error) {
+    console.error('Error fetching messages:', error);
+    return [];
+  }
+  
+  return data || [];
+};
+
+export const saveMessage = async (message: Message): Promise<Message | null> => {
+  const { data, error } = await supabase
+    .from('messages')
+    .insert([
+      { 
+        chat_id: message.chatId,
+        sender_id: message.senderId,
+        sender_name: message.senderName,
+        content: message.content,
+        timestamp: message.timestamp,
+        read: message.read
+      }
+    ])
+    .select()
+    .single();
+    
+  if (error) {
+    console.error('Error saving message:', error);
+    return null;
+  }
+  
+  // Обновление счетчика непрочитанных сообщений
+  const { error: updateError } = await supabase.rpc('increment_unread_count', { 
+    chat_id: message.chatId
+  });
+  
+  if (updateError) {
+    console.error('Error updating unread count:', updateError);
+  }
+  
+  return data;
+};
+
+export const markMessagesAsRead = async (chatId: string, userId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('messages')
+    .update({ read: true })
+    .eq('chat_id', chatId)
+    .neq('sender_id', userId);
+    
+  if (error) {
+    console.error('Error marking messages as read:', error);
+  }
+  
+  // Сброс счетчика непрочитанных сообщений
+  const { error: updateError } = await supabase
+    .from('chats')
+    .update({ unread_count: 0 })
+    .eq('id', chatId);
+    
+  if (updateError) {
+    console.error('Error resetting unread count:', updateError);
+  }
+};
+
+export const updateChatRoomsWithMessages = async (chatRooms: ChatRoom[]): Promise<ChatRoom[]> => {
+  const chatsWithMessages = await Promise.all(
+    chatRooms.map(async (chat) => {
+      const messages = await getMessagesForChat(chat.id);
+      
+      if (messages.length === 0) {
+        return chat;
+      }
+      
+      // Сортировка по времени (новые первыми)
+      const sortedMessages = [...messages].sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      
+      const lastMessage = sortedMessages[0];
+      
+      return {
+        ...chat,
+        lastMessage,
+      };
+    })
   );
   
-  if (!isDuplicate) {
-    allMessages[message.chatId].push(message);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(allMessages));
-  }
-};
-
-export const updateChatRoomsWithMessages = (chatRooms: ChatRoom[]): ChatRoom[] => {
-  const allMessages = getAllMessages();
-  
-  return chatRooms.map(chat => {
-    const chatMessages = allMessages[chat.id] || [];
-    const sortedMessages = [...chatMessages].sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-    
-    const unreadCount = sortedMessages.filter(msg => !msg.read).length;
-    const lastMessage = sortedMessages[0];
-    
-    return {
-      ...chat,
-      lastMessage,
-      unreadCount
-    };
-  });
+  return chatsWithMessages;
 };
