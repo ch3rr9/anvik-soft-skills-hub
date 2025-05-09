@@ -1,7 +1,7 @@
 
 export interface Message {
   id: number;
-  chatId: string;
+  chatId: string; // Using string to match Supabase's chat_id field
   senderId: string;
   senderName: string;
   content: string;

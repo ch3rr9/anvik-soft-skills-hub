@@ -94,7 +94,7 @@ export const saveMessage = async (message: Omit<Message, "id">): Promise<Message
     .from('messages')
     .insert([
       { 
-        chat_id: String(message.chatId),
+        chat_id: message.chatId,
         sender_id: message.senderId,
         sender_name: message.senderName,
         content: message.content,
@@ -112,7 +112,7 @@ export const saveMessage = async (message: Omit<Message, "id">): Promise<Message
   
   // Обновление счетчика непрочитанных сообщений
   const { error: updateError } = await supabase.rpc('increment_unread_count', { 
-    chat_id: String(message.chatId)
+    chat_id: message.chatId
   });
   
   if (updateError) {

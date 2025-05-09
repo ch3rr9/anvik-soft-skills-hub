@@ -133,7 +133,7 @@ const Chat = () => {
     if (!selectedChat || !user) return;
     
     const newMessage: Omit<Message, "id"> = {
-      chatId: selectedChat.id,
+      chatId: String(selectedChat.id), // Convert number to string to match the type
       senderId: user.id,
       senderName: user.name,
       content,
