@@ -1,6 +1,6 @@
 
 -- Функция для увеличения счетчика непрочитанных сообщений
-CREATE OR REPLACE FUNCTION public.increment_unread_count(chat_id TEXT)
+CREATE OR REPLACE FUNCTION public.increment_unread_count(chat_id INT)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
