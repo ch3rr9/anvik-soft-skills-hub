@@ -111,8 +111,11 @@ export const saveMessage = async (message: Omit<Message, "id">): Promise<Message
   }
   
   // Обновление счетчика непрочитанных сообщений
+  // Convert the chatId to a number since the RPC function expects a number
+  const chatIdNumber = parseInt(message.chatId, 10);
+  
   const { error: updateError } = await supabase.rpc('increment_unread_count', { 
-    chat_id: message.chatId
+    chat_id: chatIdNumber
   });
   
   if (updateError) {
