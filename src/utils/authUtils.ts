@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { UserProfile } from "@/types/auth-types";
+import { UserProfile, UserRole } from "@/types/auth-types";
 
 /**
  * Регистрация пользователя
@@ -29,7 +29,7 @@ export const registerUser = async (
     const { error: profileError } = await supabase
       .from("users")
       .insert({
-        id: Number(authData.user.id), // Конвертация строки в число
+        id: Number(authData.user.id), 
         name: userData.name,
         email: userData.email,
         role: userData.role,
@@ -101,10 +101,10 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
   }
   
   return {
-    id: String(userData.id), // Конвертация числа в строку для соответствия с UserProfile
+    id: String(userData.id), 
     name: userData.name,
     email: userData.email,
-    role: userData.role,
+    role: userData.role as UserRole,
     department: userData.department,
     position: userData.position,
     avatarUrl: userData.avatar_url

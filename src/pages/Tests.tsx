@@ -235,12 +235,18 @@ const Tests = () => {
           timeLimit: test.time_limit,
           passingScore: test.passing_score,
           availableRoles: test.available_roles as string[],
-          createdBy: test.created_by,
-          createdAt: test.created_at
+          createdBy: test.created_by || '',
+          createdAt: test.created_at || new Date().toISOString()
         })) || [];
         
-        // Добавление психологического теста к списку
-        const allTests = [...mappedTests, PSYCH_TEST];
+        // Добавление психологического теста к списку с правильными полями
+        const psychTest: Test = {
+          ...PSYCH_TEST,
+          createdBy: 'system',
+          createdAt: new Date().toISOString()
+        };
+        
+        const allTests = [...mappedTests, psychTest];
         setTests(allTests);
         
         if (user) {

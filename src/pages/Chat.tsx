@@ -96,7 +96,7 @@ const Chat = () => {
       const messagesSubscription = supabase
         .channel(`messages_${selectedChat.id}`)
         .on('postgres_changes', 
-          { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${selectedChat.id}` },
+          { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${String(selectedChat.id)}` },
           (payload) => {
             const newMessageData = payload.new as any;
             

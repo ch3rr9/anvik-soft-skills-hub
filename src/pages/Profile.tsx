@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +31,7 @@ const ProfileInfo = () => {
       const { error } = await supabase
         .from('users')
         .update({ [field]: value })
-        .eq('id', user.id);
+        .eq('id', Number(user.id));
         
       if (error) throw error;
       

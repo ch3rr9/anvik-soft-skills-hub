@@ -1,4 +1,3 @@
-
 import { ChatRoom, Message } from "@/types/chat-types";
 
 // Мок пользователей
@@ -13,28 +12,28 @@ export const MOCK_USERS = [
 // Мок чатов
 export const MOCK_CHATS: ChatRoom[] = [
   {
-    id: "chat1",
+    id: 1,
     name: "Общий чат",
     type: "group",
     participants: ["1", "2", "3", "4", "5"],
     unreadCount: 3,
   },
   {
-    id: "chat2",
+    id: 2,
     name: "Отдел разработки",
     type: "group",
     participants: ["1", "3", "5"],
     unreadCount: 0,
   },
   {
-    id: "chat3",
+    id: 3,
     name: "Иван Директоров",
     type: "direct",
     participants: ["3", "1"],
     unreadCount: 1,
   },
   {
-    id: "chat4",
+    id: 4,
     name: "Мария Кадрова",
     type: "direct",
     participants: ["3", "2"],
@@ -188,4 +187,3 @@ export const MOCK_MESSAGES: Record<string, Message[]> = {
     },
   ],
 };
-

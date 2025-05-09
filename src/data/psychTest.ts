@@ -1,12 +1,10 @@
+import { Test } from "@/types/test-types";
 
-export const PSYCH_TEST = {
-  id: 999, // Special ID for psych test
-  title: "Оценка психологического состояния",
-  description: "Тест для определения необходимости отпуска в текущем квартале",
-  category: "Психологическая оценка",
-  timeLimit: 15,
-  passingScore: 70,
-  availableRoles: ["employee", "manager", "director"],
+export const PSYCH_TEST: Test = {
+  id: 999, // Use a unique ID that won't conflict with DB tests
+  title: "Психологический тест на выгорание",
+  description: "Тест для оценки вашего психологического состояния и уровня стресса",
+  category: "Психология",
   questions: [
     {
       id: 1,
@@ -63,7 +61,12 @@ export const PSYCH_TEST = {
       ],
       correctAnswer: 0
     }
-  ]
+  ],
+  timeLimit: 10,
+  passingScore: 70,
+  availableRoles: ["all"],
+  createdBy: "system",
+  createdAt: "2025-01-01T00:00:00Z"
 };
 
 export const analyzePsychTestResults = (answers: number[]): {
