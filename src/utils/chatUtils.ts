@@ -110,14 +110,13 @@ export const saveMessage = async (message: Omit<Message, "id">): Promise<Message
     return null;
   }
   
-  // Обновление счетчика непрочитанных сообщений
-  // Convert the chatId to a number since the RPC function expects a number
+  // Обновление счетчика непрочитанных сообщений напрямую через SQL-запрос
   const chatIdNumber = parseInt(message.chatId, 10);
   
-  // Используем корректную типизацию для аргумента chat_id
-  const { error: updateError } = await supabase.rpc('increment_unread_count', { 
-    chat_id: chatIdNumber
-  });
+  const { error: updateError } = await supabase
+    .from('chats')
+    .update({ unread_count: supabase.sql`unread_count + 1` })
+    .eq('id', chatIdNumber);
   
   if (updateError) {
     console.error('Error updating unread count:', updateError);
@@ -193,3 +192,4 @@ export const updateChatRoomsWithMessages = async (chats: any[]): Promise<ChatRoo
   
   return chatsWithMessages;
 };
+
