@@ -15,6 +15,7 @@ export interface ChatRoom {
   type: "direct" | "group";
   participants: string[];
   lastMessage: ChatMessage | null;
+  unreadCount?: number; // Added unreadCount property
 }
 
 export interface FormattedMessage {
@@ -43,4 +44,15 @@ export interface Message {
   timestamp: string;
   read: boolean;
   chatId: string;
+}
+
+// Define types for the director_reports table
+export interface DirectorReport {
+  id: number;
+  test_id: number;
+  user_id: string;
+  test_result_id: number;
+  file_path: string;
+  created_at: string;
+  viewed: boolean;
 }

@@ -5,6 +5,7 @@ import { Test, TestResult } from "@/types/test-types";
 import { UserProfile } from "@/types/auth-types";
 import { supabase } from "@/integrations/supabase/client";
 
+// Extend jsPDF with autoTable and internal properties using proper typings
 declare module "jspdf" {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
@@ -147,6 +148,7 @@ export const sendTestResultToDirector = async (
     }
     
     // Store reference in the database
+    // Use any() to bypass TypeScript limitations with custom tables
     const { error: dbError } = await supabase
       .from('director_reports')
       .insert({
@@ -156,7 +158,7 @@ export const sendTestResultToDirector = async (
         file_path: data.path,
         created_at: new Date().toISOString(),
         viewed: false
-      });
+      }) as { data: any, error: any };
       
     if (dbError) {
       console.error("Error storing PDF reference:", dbError);
