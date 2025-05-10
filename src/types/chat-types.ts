@@ -45,19 +45,18 @@ export interface Message {
   chatId: string;
 }
 
-// Define types for the director_reports table
-export interface DirectorReport {
+// Define types for the test results to show to director
+export interface TestResultForDirector {
   id: number;
-  test_id: number;
   user_id: string;
-  test_result_id: number;
-  file_path: string;
+  user_name: string;
+  user_position: string;
+  test_id: number;
+  test_name: string;
+  score: number;
+  max_score: number;
+  passing_score: number;
+  passed: boolean;
   created_at: string;
   viewed: boolean;
-}
-
-// Match the property names in TestResultsViewer.tsx with snake_case
-export interface TestResultFile extends DirectorReport {
-  testName?: string;
-  userName?: string;
 }

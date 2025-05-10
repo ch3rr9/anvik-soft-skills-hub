@@ -3,76 +3,68 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText, Download, Eye } from "lucide-react";
+import { CheckCircle2, XCircle, Eye, ArrowUpCircle } from "lucide-react";
 import { UserProfile } from "@/types/auth-types";
-import { TestResultFile } from "@/types/chat-types";
+import { TestResultForDirector } from "@/types/chat-types";
 
 interface TestResultsViewerProps {
   user: UserProfile;
 }
 
 const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
-  const [reports, setReports] = useState<TestResultFile[]>([]);
+  const [results, setResults] = useState<TestResultForDirector[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedReport, setSelectedReport] = useState<TestResultFile | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [selectedResult, setSelectedResult] = useState<TestResultForDirector | null>(null);
 
-  // Load all reports for the director
+  // Load all test results for the director
   useEffect(() => {
-    const loadReports = async () => {
+    const loadResults = async () => {
       if (user.role !== "director") return;
       
       setLoading(true);
       try {
-        // Use type assertion for director_reports table
-        const { data, error } = await supabase
-          .from('director_reports' as any)
-          .select("*")
-          .order("created_at", { ascending: false });
+        // Get all test results
+        const { data: resultsData, error: resultsError } = await supabase
+          .from("test_results")
+          .select("*, tests(title, passing_score)");
           
-        if (error) throw error;
+        if (resultsError) throw resultsError;
         
-        // Map to our interface
-        const reportFiles: TestResultFile[] = data.map((report: any) => ({
-          id: report.id,
-          test_id: report.test_id,
-          user_id: report.user_id,
-          test_result_id: report.test_result_id,
-          file_path: report.file_path,
-          viewed: report.viewed,
-          created_at: report.created_at
-        }));
-        
-        // Fetch additional information for each report
-        const enrichedReports = await Promise.all(reportFiles.map(async report => {
-          // Get test name
-          const { data: testData } = await supabase
-            .from("tests")
-            .select("title")
-            .eq("id", report.test_id)
-            .single();
+        // Get user information for each result
+        const enrichedResults = await Promise.all(
+          resultsData.map(async (result) => {
+            // Get user details
+            const { data: userData } = await supabase
+              .from("users")
+              .select("name, position")
+              .eq("id", result.user_id)
+              .single();
             
-          // Get user name
-          const { data: userData } = await supabase
-            .from("users")
-            .select("name")
-            .eq("id", report.user_id)
-            .single();
-            
-          return {
-            ...report,
-            testName: testData?.title || "Неизвестный тест",
-            userName: userData?.name || "Неизвестный сотрудник"
-          };
-        }));
+            return {
+              id: result.id,
+              user_id: result.user_id,
+              user_name: userData?.name || "Неизвестный сотрудник",
+              user_position: userData?.position || "Должность не указана",
+              test_id: result.test_id,
+              test_name: result.tests?.title || "Неизвестный тест",
+              score: result.score,
+              max_score: result.max_score,
+              passing_score: result.tests?.passing_score || 0,
+              passed: result.passed,
+              created_at: result.created_at,
+              viewed: result.viewed || false
+            };
+          })
+        );
         
-        setReports(enrichedReports);
+        setResults(enrichedResults);
       } catch (error) {
-        console.error("Error loading director reports:", error);
+        console.error("Error loading test results:", error);
         toast({
-          title: "Ошибка загрузки отчетов",
+          title: "Ошибка загрузки результатов",
           description: "Не удалось загрузить результаты тестирования",
           variant: "destructive"
         });
@@ -81,78 +73,45 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
       }
     };
     
-    loadReports();
+    loadResults();
   }, [user]);
   
-  // View a report
-  const handleViewReport = async (report: TestResultFile) => {
+  // Mark result as viewed
+  const handleViewResult = async (result: TestResultForDirector) => {
     try {
-      setSelectedReport(report);
-      
-      // Get signed URL for the file
-      const { data, error } = await supabase
-        .storage
-        .from("test-results")
-        .createSignedUrl(report.file_path, 3600); // 1 hour expiration
-        
-      if (error) throw error;
-      
-      setPdfUrl(data.signedUrl);
+      setSelectedResult(result);
       
       // Mark as viewed if not already
-      if (!report.viewed) {
+      if (!result.viewed) {
         await supabase
-          .from('director_reports' as any)
+          .from("test_results")
           .update({ viewed: true })
-          .eq("id", report.id);
+          .eq("id", result.id);
           
         // Update local state
-        setReports(prev => 
-          prev.map(r => (r.id === report.id ? { ...r, viewed: true } : r))
+        setResults(prev => 
+          prev.map(r => (r.id === result.id ? { ...r, viewed: true } : r))
         );
       }
     } catch (error) {
-      console.error("Error viewing report:", error);
+      console.error("Error viewing result:", error);
       toast({
-        title: "Ошибка просмотра отчета",
-        description: "Не удалось открыть PDF файл",
+        title: "Ошибка",
+        description: "Не удалось отметить результат как просмотренный",
         variant: "destructive"
       });
     }
   };
   
-  // Download a report
-  const handleDownloadReport = async (report: TestResultFile) => {
-    try {
-      // Get the file URL
-      const { data, error } = await supabase
-        .storage
-        .from("test-results")
-        .download(report.file_path);
-        
-      if (error) throw error;
-      
-      // Create a download link
-      const url = URL.createObjectURL(data);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `результат_теста_${report.userName}_${new Date(report.created_at).toLocaleDateString()}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      toast({
-        title: "Отчет скачан",
-        description: "PDF файл успешно скачан"
-      });
-    } catch (error) {
-      console.error("Error downloading report:", error);
-      toast({
-        title: "Ошибка скачивания",
-        description: "Не удалось скачать PDF файл",
-        variant: "destructive"
-      });
+  const getPromotionRecommendation = (result: TestResultForDirector) => {
+    // Calculate percentage
+    const percentage = Math.round((result.score / result.max_score) * 100);
+    const passingPercentage = result.passing_score;
+    
+    if (percentage >= passingPercentage) {
+      return "Сотрудник успешно прошел тест и может быть повышен в должности";
+    } else {
+      return "Результат теста недостаточен для повышения в должности";
     }
   };
   
@@ -174,7 +133,7 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
       <CardHeader>
         <CardTitle>Результаты тестирования сотрудников</CardTitle>
         <CardDescription>
-          Просмотр результатов тестов сотрудников в формате PDF
+          Просмотр результатов тестов и рекомендаций по карьерному росту сотрудников
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -182,71 +141,133 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
           <div className="flex justify-center p-8">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
           </div>
-        ) : reports.length === 0 ? (
+        ) : results.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            Пока нет доступных отчетов о результатах тестирования
+            Пока нет доступных результатов тестирования
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Список отчетов</h3>
+              <h3 className="text-lg font-medium">Список результатов</h3>
               <div className="h-[calc(100vh-350px)] overflow-y-auto pr-2">
-                {reports.map(report => (
-                  <div 
-                    key={report.id} 
-                    className={`p-4 rounded-lg mb-3 cursor-pointer transition-colors ${
-                      selectedReport?.id === report.id 
-                        ? "bg-primary text-primary-foreground" 
-                        : "bg-card hover:bg-accent"
-                    } border`}
-                    onClick={() => handleViewReport(report)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          <span className="font-medium">{report.testName}</span>
-                          {!report.viewed && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Сотрудник</TableHead>
+                      <TableHead>Тест</TableHead>
+                      <TableHead>Результат</TableHead>
+                      <TableHead>Действие</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {results.map((result) => (
+                      <TableRow 
+                        key={result.id}
+                        className={`cursor-pointer ${selectedResult?.id === result.id ? 'bg-muted' : ''}`}
+                        onClick={() => handleViewResult(result)}
+                      >
+                        <TableCell>
+                          {result.user_name}
+                          {!result.viewed && (
                             <Badge variant="default" className="ml-2">Новый</Badge>
                           )}
-                        </div>
-                        <p className="text-sm mt-1">{report.userName}</p>
-                        <p className="text-xs mt-1 opacity-70">
-                          {new Date(report.created_at).toLocaleString()}
-                        </p>
-                      </div>
-                      <div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDownloadReport(report);
-                          }}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                        </TableCell>
+                        <TableCell>{result.test_name}</TableCell>
+                        <TableCell>
+                          {result.passed ? (
+                            <Badge variant="success" className="bg-green-100 text-green-800">
+                              Пройден
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive">Не пройден</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewResult(result);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </div>
             
             <div className="border rounded-lg p-4">
-              <h3 className="text-lg font-medium mb-4">Просмотр отчета</h3>
-              {selectedReport && pdfUrl ? (
-                <div className="h-[calc(100vh-350px)]">
-                  <iframe 
-                    src={`${pdfUrl}#toolbar=0`} 
-                    className="w-full h-full border rounded"
-                    title="PDF Viewer"
-                  />
+              <h3 className="text-lg font-medium mb-4">Детали результата</h3>
+              {selectedResult ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Сотрудник</h4>
+                      <p className="font-medium">{selectedResult.user_name}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Должность</h4>
+                      <p>{selectedResult.user_position}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Название теста</h4>
+                      <p>{selectedResult.test_name}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Дата прохождения</h4>
+                      <p>{new Date(selectedResult.created_at).toLocaleString()}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-muted p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-muted-foreground mb-2">Результат</h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <span>
+                        {selectedResult.score} из {selectedResult.max_score} баллов 
+                        ({Math.round((selectedResult.score / selectedResult.max_score) * 100)}%)
+                      </span>
+                      {selectedResult.passed ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-red-600" />
+                      )}
+                    </div>
+                    <div className="h-2 w-full bg-muted-foreground/20 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full ${
+                          selectedResult.passed ? 'bg-green-600' : 'bg-red-600'
+                        }`}
+                        style={{ 
+                          width: `${Math.round((selectedResult.score / selectedResult.max_score) * 100)}%` 
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs mt-1 text-muted-foreground">
+                      Проходной балл: {selectedResult.passing_score}%
+                    </p>
+                  </div>
+                  
+                  <div className="bg-muted p-4 rounded-lg flex items-start space-x-3">
+                    {selectedResult.passed ? (
+                      <ArrowUpCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                    )}
+                    <div>
+                      <h4 className="font-medium mb-1">Рекомендация:</h4>
+                      <p className="text-sm">{getPromotionRecommendation(selectedResult)}</p>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-[calc(100vh-350px)] text-muted-foreground">
                   <Eye className="h-12 w-12 mb-4 opacity-30" />
-                  <p>Выберите отчет для просмотра</p>
+                  <p>Выберите результат для просмотра</p>
                 </div>
               )}
             </div>

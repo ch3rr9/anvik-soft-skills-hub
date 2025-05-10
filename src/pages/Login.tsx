@@ -45,6 +45,11 @@ const Login = () => {
     }
   };
 
+  const handleDemoLogin = (demoEmail: string, demoPassword: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+  };
+
   // Если пользователь уже авторизован, перенаправляем на главную
   if (isAuthenticated) {
     return <Navigate to="/" />;
@@ -120,14 +125,21 @@ const Login = () => {
         <div className="text-center text-sm text-muted-foreground">
           <p>Демо-аккаунты для тестирования:</p>
           <div className="mt-2 grid grid-cols-1 gap-2">
-            <div className="p-2 bg-gray-100 rounded-md">
+            <div className="p-3 bg-gray-100 rounded-md hover:bg-gray-200 cursor-pointer transition-colors"
+                 onClick={() => handleDemoLogin("director@anvik-soft.com", "director123")}>
               <p><strong>Директор:</strong> director@anvik-soft.com / director123</p>
             </div>
-            <div className="p-2 bg-gray-100 rounded-md">
+            <div className="p-3 bg-gray-100 rounded-md hover:bg-gray-200 cursor-pointer transition-colors"
+                 onClick={() => handleDemoLogin("hr@anvik-soft.com", "hr123")}>
               <p><strong>HR-менеджер:</strong> hr@anvik-soft.com / hr123</p>
             </div>
-            <div className="p-2 bg-gray-100 rounded-md">
+            <div className="p-3 bg-gray-100 rounded-md hover:bg-gray-200 cursor-pointer transition-colors"
+                 onClick={() => handleDemoLogin("employee@anvik-soft.com", "employee123")}>
               <p><strong>Сотрудник:</strong> employee@anvik-soft.com / employee123</p>
+            </div>
+            <div className="p-3 bg-gray-100 rounded-md hover:bg-gray-200 cursor-pointer transition-colors"
+                 onClick={() => handleDemoLogin("manager@anvik-soft.com", "manager123")}>
+              <p><strong>Менеджер:</strong> manager@anvik-soft.com / manager123</p>
             </div>
           </div>
         </div>
