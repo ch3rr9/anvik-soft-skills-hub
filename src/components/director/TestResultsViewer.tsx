@@ -29,30 +29,49 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
         // Get all test results
         const { data: resultsData, error: resultsError } = await supabase
           .from("test_results")
-          .select("*, tests(title, passing_score)");
+          .select("*");
           
         if (resultsError) throw resultsError;
+        
+        // Get all tests separately to fix the join issue
+        const { data: testsData, error: testsError } = await supabase
+          .from("tests")
+          .select("id, title, passing_score");
+          
+        if (testsError) throw testsError;
+        
+        // Map tests by ID for easy lookup
+        const testsById = testsData.reduce((acc, test) => {
+          acc[test.id] = test;
+          return acc;
+        }, {} as Record<number, { id: number; title: string; passing_score: number }>);
         
         // Get user information for each result
         const enrichedResults = await Promise.all(
           resultsData.map(async (result) => {
-            // Get user details - convert user_id to number if needed
+            // Convert user_id to number if it's a string
+            const userId = typeof result.user_id === 'string' ? parseInt(result.user_id, 10) : result.user_id;
+            
+            // Get user details
             const { data: userData } = await supabase
               .from("users")
               .select("name, position")
-              .eq("id", result.user_id)
+              .eq("id", userId)
               .single();
+            
+            // Look up test data from our map
+            const testData = testsById[result.test_id] || { title: "Неизвестный тест", passing_score: 0 };
             
             return {
               id: result.id,
-              user_id: result.user_id,
+              user_id: userId,
               user_name: userData?.name || "Неизвестный сотрудник",
               user_position: userData?.position || "Должность не указана",
               test_id: result.test_id,
-              test_name: result.tests?.title || "Неизвестный тест",
+              test_name: testData.title,
               score: result.score,
               max_score: result.max_score,
-              passing_score: result.tests?.passing_score || 0,
+              passing_score: testData.passing_score,
               passed: result.passed,
               created_at: result.created_at,
               viewed: false // Default value, as it doesn't exist in test_results table yet
