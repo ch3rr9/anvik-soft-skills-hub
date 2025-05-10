@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,8 +27,8 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
       setLoading(true);
       try {
         // Use type assertion for director_reports table
-        const { data, error } = await (supabase
-          .from("director_reports") as any)
+        const { data, error } = await supabase
+          .from('director_reports' as any)
           .select("*")
           .order("created_at", { ascending: false });
           
@@ -100,8 +101,8 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
       
       // Mark as viewed if not already
       if (!report.viewed) {
-        await (supabase
-          .from("director_reports") as any)
+        await supabase
+          .from('director_reports' as any)
           .update({ viewed: true })
           .eq("id", report.id);
           

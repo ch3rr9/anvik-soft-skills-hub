@@ -1,3 +1,4 @@
+
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import { Test, TestResult } from "@/types/test-types";
@@ -5,22 +6,8 @@ import { UserProfile } from "@/types/auth-types";
 import { supabase } from "@/integrations/supabase/client";
 
 // Create a proper type for jsPDF with autoTable
-declare module "jspdf" {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    internal: {
-      scaleFactor: number;
-      pageSize: {
-        width: number;
-        getWidth: () => number;
-        height: number;
-        getHeight: () => number;
-      };
-      pages: number[];
-      getNumberOfPages: () => number;
-      getEncryptor: (objectId: number) => (data: string) => string;
-    };
-  }
+interface JsPDFWithAutoTable extends jsPDF {
+  autoTable: (options: any) => jsPDF;
 }
 
 /**
@@ -32,7 +19,7 @@ export const generateTestResultPDF = (
   user: UserProfile
 ): Blob => {
   // Create a new PDF document
-  const doc = new jsPDF();
+  const doc = new jsPDF() as JsPDFWithAutoTable;
   
   // Add title
   doc.setFontSize(20);
@@ -99,7 +86,7 @@ export const generateTestResultPDF = (
   });
   
   // Add footer
-  const pageCount = doc.internal.getNumberOfPages();
+  const pageCount = (doc as any).internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(10);
@@ -146,9 +133,9 @@ export const sendTestResultToDirector = async (
       return false;
     }
     
-    // Store reference in the database - using `from` with type assertion
-    const { error: dbError } = await (supabase
-      .from('director_reports') as any)
+    // Store reference in the database with type assertion
+    const { error: dbError } = await supabase
+      .from('director_reports' as any)
       .insert({
         test_id: test.id,
         user_id: user.id,

@@ -56,7 +56,7 @@ export interface DirectorReport {
   viewed: boolean;
 }
 
-// Add this interface for consistency with property naming in TestResultsViewer.tsx
+// Match the property names in TestResultsViewer.tsx with snake_case
 export interface TestResultFile extends DirectorReport {
   testName?: string;
   userName?: string;
