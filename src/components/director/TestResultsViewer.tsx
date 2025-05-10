@@ -75,7 +75,7 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
               passed: result.passed,
               created_at: result.created_at,
               viewed: false // Default value, as it doesn't exist in test_results table yet
-            };
+            } as TestResultForDirector;
           })
         );
         

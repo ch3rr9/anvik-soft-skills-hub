@@ -1,4 +1,3 @@
-
 export interface ChatMessage {
   id: number;
   chatId: string;
@@ -48,7 +47,7 @@ export interface Message {
 // Define types for the test results to show to director
 export interface TestResultForDirector {
   id: number;
-  user_id: string;
+  user_id: number; // Changed from string to number to match our implementation
   user_name: string;
   user_position: string;
   test_id: number;
