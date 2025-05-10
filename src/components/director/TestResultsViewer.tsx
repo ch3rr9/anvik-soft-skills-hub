@@ -264,7 +264,7 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
           </div>
         )}
       </CardContent>
-    </CardContent>
+    </Card>
   );
 };
 

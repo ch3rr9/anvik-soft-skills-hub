@@ -3,6 +3,7 @@ import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import { Test, TestResult } from "@/types/test-types";
 import { UserProfile } from "@/types/auth-types";
+import { supabase } from "@/integrations/supabase/client";
 
 declare module "jspdf" {
   interface jsPDF {
