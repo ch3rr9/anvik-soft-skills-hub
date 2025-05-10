@@ -16,7 +16,6 @@ export type Database = {
           name: string
           participants: Json
           type: string
-          unread_count: number
         }
         Insert: {
           created_at?: string
@@ -24,7 +23,6 @@ export type Database = {
           name?: string
           participants?: Json
           type?: string
-          unread_count?: number
         }
         Update: {
           created_at?: string
@@ -32,7 +30,6 @@ export type Database = {
           name?: string
           participants?: Json
           type?: string
-          unread_count?: number
         }
         Relationships: []
       }

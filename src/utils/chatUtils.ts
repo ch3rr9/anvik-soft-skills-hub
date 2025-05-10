@@ -1,195 +1,203 @@
 
-import { Message, ChatRoom } from "@/types/chat-types";
 import { supabase } from "@/integrations/supabase/client";
-import { Json } from "@/integrations/supabase/types";
+import { ChatMessage, ChatRoom } from "@/types/chat-types";
+import { UserProfile } from "@/types/auth-types";
 
-export const formatMessageTime = (timestamp: string) => {
-  return new Date(timestamp).toLocaleTimeString('ru-RU', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
+/**
+ * Загрузка списка чатов для текущего пользователя
+ */
+export const loadUserChats = async (userId: string): Promise<ChatRoom[]> => {
+  try {
+    const { data, error } = await supabase
+      .from("chats")
+      .select("*")
+      .filter("participants", "cs", `["${userId}"]`);
 
-export const formatMessageDate = (timestamp: string) => {
-  const date = new Date(timestamp);
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  
-  if (date.toDateString() === today.toDateString()) {
-    return "Сегодня";
-  } else if (date.toDateString() === yesterday.toDateString()) {
-    return "Вчера";
-  } else {
-    return date.toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'long',
-    });
-  }
-};
-
-export const groupMessagesByDate = (messages: Message[]) => {
-  const groups: { date: string; messages: Message[] }[] = [];
-  
-  messages.forEach(message => {
-    const messageDate = formatMessageDate(message.timestamp);
-    const existingGroup = groups.find(group => group.date === messageDate);
-    
-    if (existingGroup) {
-      existingGroup.messages.push(message);
-    } else {
-      groups.push({ date: messageDate, messages: [message] });
+    if (error) {
+      console.error("Error loading chats:", error);
+      return [];
     }
-  });
-  
-  return groups;
-};
 
-// Функции для работы с чатами из Supabase
-export const getAllChats = async (): Promise<ChatRoom[]> => {
-  const { data, error } = await supabase
-    .from('chats')
-    .select('*');
-    
-  if (error) {
-    console.error('Error fetching chats:', error);
-    return [];
-  }
-  
-  return data?.map(chat => ({
-    id: chat.id,
-    name: chat.name,
-    type: chat.type as "direct" | "group",
-    participants: chat.participants as string[],
-    unreadCount: chat.unread_count,
-    created_at: chat.created_at
-  })) || [];
-};
+    const chats: ChatRoom[] = await Promise.all(
+      data.map(async (chat) => {
+        // Получение последнего сообщения для чата
+        const { data: messagesData } = await supabase
+          .from("messages")
+          .select("*")
+          .eq("chat_id", String(chat.id))
+          .order("created_at", { ascending: false })
+          .limit(1);
 
-export const getMessagesForChat = async (chatId: number): Promise<Message[]> => {
-  const { data, error } = await supabase
-    .from('messages')
-    .select('*')
-    .eq('chat_id', String(chatId))
-    .order('timestamp', { ascending: true });
-    
-  if (error) {
-    console.error('Error fetching messages:', error);
-    return [];
-  }
-  
-  return data?.map(msg => ({
-    id: msg.id,
-    chatId: msg.chat_id,
-    senderId: msg.sender_id,
-    senderName: msg.sender_name,
-    content: msg.content,
-    timestamp: msg.timestamp,
-    read: msg.read
-  })) || [];
-};
+        const lastMessage = messagesData && messagesData.length > 0 
+          ? {
+              id: messagesData[0].id,
+              chatId: messagesData[0].chat_id,
+              content: messagesData[0].content,
+              senderId: messagesData[0].sender_id,
+              senderName: messagesData[0].sender_name,
+              timestamp: messagesData[0].timestamp,
+              read: messagesData[0].read
+            }
+          : null;
 
-export const saveMessage = async (message: Omit<Message, "id">): Promise<Message | null> => {
-  const { data, error } = await supabase
-    .from('messages')
-    .insert([
-      { 
-        chat_id: message.chatId,
-        sender_id: message.senderId,
-        sender_name: message.senderName,
-        content: message.content,
-        timestamp: message.timestamp,
-        read: message.read
-      }
-    ])
-    .select()
-    .single();
-    
-  if (error) {
-    console.error('Error saving message:', error);
-    return null;
-  }
-  
-  // Обновление счетчика непрочитанных сообщений напрямую через SQL-запрос
-  const chatIdNumber = parseInt(message.chatId, 10);
-  
-  const { error: updateError } = await supabase
-    .from('chats')
-    .update({ unread_count: supabase.sql`unread_count + 1` })
-    .eq('id', chatIdNumber);
-  
-  if (updateError) {
-    console.error('Error updating unread count:', updateError);
-  }
-  
-  return {
-    id: data.id,
-    chatId: data.chat_id,
-    senderId: data.sender_id,
-    senderName: data.sender_name,
-    content: data.content,
-    timestamp: data.timestamp,
-    read: data.read
-  };
-};
-
-export const markMessagesAsRead = async (chatId: number, userId: string): Promise<void> => {
-  const { error } = await supabase
-    .from('messages')
-    .update({ read: true })
-    .eq('chat_id', String(chatId))
-    .neq('sender_id', userId);
-    
-  if (error) {
-    console.error('Error marking messages as read:', error);
-  }
-  
-  // Сброс счетчика непрочитанных сообщений
-  const { error: updateError } = await supabase
-    .from('chats')
-    .update({ unread_count: 0 })
-    .eq('id', chatId);
-    
-  if (updateError) {
-    console.error('Error resetting unread count:', updateError);
-  }
-};
-
-export const updateChatRoomsWithMessages = async (chats: any[]): Promise<ChatRoom[]> => {
-  const chatsWithMessages = await Promise.all(
-    chats.map(async (chat) => {
-      const messages = await getMessagesForChat(chat.id);
-      
-      if (messages.length === 0) {
         return {
           id: chat.id,
           name: chat.name,
-          type: chat.type as "direct" | "group",
+          type: chat.type,
           participants: chat.participants as string[],
-          unreadCount: chat.unread_count,
-          created_at: chat.created_at
+          lastMessage,
+          unreadCount: 0
         };
-      }
-      
-      // Сортировка по времени (новые первыми)
-      const sortedMessages = [...messages].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
-      
-      const lastMessage = sortedMessages[0];
-      
-      return {
-        id: chat.id,
-        name: chat.name,
-        type: chat.type as "direct" | "group",
-        participants: chat.participants as string[],
-        unreadCount: chat.unread_count,
-        lastMessage,
-        created_at: chat.created_at
-      };
-    })
-  );
-  
-  return chatsWithMessages;
+      })
+    );
+
+    return chats;
+  } catch (error) {
+    console.error("Error in loadUserChats:", error);
+    return [];
+  }
 };
 
+/**
+ * Загрузка сообщений для конкретного чата
+ */
+export const loadChatMessages = async (chatId: number | string): Promise<ChatMessage[]> => {
+  try {
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("chat_id", String(chatId))
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Error loading messages:", error);
+      return [];
+    }
+
+    return data.map(msg => ({
+      id: msg.id,
+      chatId: msg.chat_id,
+      content: msg.content,
+      senderId: msg.sender_id,
+      senderName: msg.sender_name,
+      timestamp: msg.timestamp,
+      read: msg.read
+    }));
+  } catch (error) {
+    console.error("Error in loadChatMessages:", error);
+    return [];
+  }
+};
+
+/**
+ * Отправка нового сообщения в чат
+ */
+export const sendMessage = async (
+  chatId: number | string,
+  content: string,
+  user: UserProfile
+): Promise<ChatMessage | null> => {
+  try {
+    const newMessage = {
+      chat_id: String(chatId),
+      content,
+      sender_id: user.id,
+      sender_name: user.name,
+      timestamp: new Date().toISOString(),
+      read: false
+    };
+
+    const { data, error } = await supabase
+      .from("messages")
+      .insert([newMessage])
+      .select();
+
+    if (error) {
+      console.error("Error sending message:", error);
+      return null;
+    }
+
+    if (!data || data.length === 0) {
+      return null;
+    }
+
+    return {
+      id: data[0].id,
+      chatId: data[0].chat_id,
+      content: data[0].content,
+      senderId: data[0].sender_id,
+      senderName: data[0].sender_name,
+      timestamp: data[0].timestamp,
+      read: data[0].read
+    };
+  } catch (error) {
+    console.error("Error in sendMessage:", error);
+    return null;
+  }
+};
+
+/**
+ * Создание нового чата
+ */
+export const createChat = async (
+  name: string,
+  participants: string[],
+  type: "direct" | "group" = "direct"
+): Promise<ChatRoom | null> => {
+  try {
+    const newChat = {
+      name,
+      participants,
+      type
+    };
+
+    const { data, error } = await supabase
+      .from("chats")
+      .insert([newChat])
+      .select();
+
+    if (error) {
+      console.error("Error creating chat:", error);
+      return null;
+    }
+
+    if (!data || data.length === 0) {
+      return null;
+    }
+
+    return {
+      id: data[0].id,
+      name: data[0].name,
+      type: data[0].type,
+      participants: data[0].participants as string[],
+      lastMessage: null,
+      unreadCount: 0
+    };
+  } catch (error) {
+    console.error("Error in createChat:", error);
+    return null;
+  }
+};
+
+/**
+ * Отметить сообщения как прочитанные
+ */
+export const markMessagesAsRead = async (chatId: number | string, userId: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from("messages")
+      .update({ read: true })
+      .eq("chat_id", String(chatId))
+      .neq("sender_id", userId);
+
+    if (error) {
+      console.error("Error marking messages as read:", error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error in markMessagesAsRead:", error);
+    return false;
+  }
+};

@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { User, Briefcase, Building, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import TestResultsViewer from "@/components/director/TestResultsViewer";
 
 const ProfileInfo = () => {
   const { user } = useAuth();
@@ -222,7 +223,22 @@ const PreferencesTab = () => {
   );
 };
 
+const DirectorDashboard = () => {
+  const { user } = useAuth();
+  
+  if (!user) return null;
+  
+  return (
+    <div className="space-y-6">
+      <h3 className="text-lg font-medium">Панель директора</h3>
+      <TestResultsViewer user={user} />
+    </div>
+  );
+};
+
 const Profile = () => {
+  const { user } = useAuth();
+  
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Личный кабинет</h1>
@@ -240,6 +256,9 @@ const Profile = () => {
               <TabsTrigger value="info">Информация</TabsTrigger>
               <TabsTrigger value="skills">Навыки</TabsTrigger>
               <TabsTrigger value="preferences">Настройки</TabsTrigger>
+              {user?.role === "director" && (
+                <TabsTrigger value="director">Результаты тестов</TabsTrigger>
+              )}
             </TabsList>
             <TabsContent value="info">
               <ProfileInfo />
@@ -250,6 +269,11 @@ const Profile = () => {
             <TabsContent value="preferences">
               <PreferencesTab />
             </TabsContent>
+            {user?.role === "director" && (
+              <TabsContent value="director">
+                <DirectorDashboard />
+              </TabsContent>
+            )}
           </Tabs>
         </CardContent>
       </Card>

@@ -1,7 +1,7 @@
 
-export interface Message {
+export interface ChatMessage {
   id: number;
-  chatId: string; // Using string to match Supabase's chat_id field
+  chatId: string;
   senderId: string;
   senderName: string;
   content: string;
@@ -14,7 +14,22 @@ export interface ChatRoom {
   name: string;
   type: "direct" | "group";
   participants: string[];
-  lastMessage?: Message;
-  unreadCount: number;
-  created_at?: string;
+  lastMessage: ChatMessage | null;
+}
+
+export interface FormattedMessage {
+  id: number;
+  senderId: string;
+  senderName: string;
+  content: string;
+  timestamp: string;
+  read: boolean;
+  isCurrentUser: boolean;
+}
+
+export interface MessageGroup {
+  senderId: string;
+  senderName: string;
+  isCurrentUser: boolean;
+  messages: FormattedMessage[];
 }

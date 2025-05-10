@@ -13,6 +13,7 @@ import { Test, TestResult } from "@/types/test-types";
 import { PSYCH_TEST, analyzePsychTestResults } from "@/data/psychTest";
 import { supabase } from "@/integrations/supabase/client";
 import { Json } from "@/integrations/supabase/types";
+import { sendTestResultToDirector } from "@/utils/pdfUtils";
 
 // Компонент для отображения списка тестов
 const TestsList: React.FC<{
@@ -269,7 +270,9 @@ const Tests = () => {
             maxScore: result.max_score,
             passedAt: result.passed_at,
             passed: result.passed,
-            answers: result.answers as number[]
+            answers: result.answers as number[],
+            recommendation: result.recommendation,
+            needsVacation: result.needs_vacation
           })) || [];
           
           setTestResults(mappedResults);
@@ -327,11 +330,34 @@ const Tests = () => {
         maxScore: data[0].max_score,
         passedAt: data[0].passed_at,
         passed: data[0].passed,
-        answers: data[0].answers as number[]
+        answers: data[0].answers as number[],
+        recommendation: data[0].recommendation,
+        needsVacation: data[0].needs_vacation
       };
       
       // Обновление результатов в локальном состоянии
       setTestResults(prevResults => [...prevResults, savedResult]);
+      
+      // Если тест успешно сохранен, отправляем его директору в формате PDF
+      if (user) {
+        const test = tests.find(t => t.id === savedResult.testId);
+        if (test) {
+          // Отправка результата теста директору
+          const sent = await sendTestResultToDirector(test, savedResult, user);
+          if (sent) {
+            toast({
+              title: "PDF отчет отправлен",
+              description: "Результаты теста были отправлены директору в формате PDF",
+            });
+          } else {
+            toast({
+              title: "Ошибка отправки отчета",
+              description: "Не удалось отправить отчет директору",
+              variant: "destructive"
+            });
+          }
+        }
+      }
       
       return savedResult;
     } catch (error) {

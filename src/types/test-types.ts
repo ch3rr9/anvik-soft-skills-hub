@@ -28,6 +28,8 @@ export interface TestResult {
   passedAt: string;
   passed: boolean;
   answers: number[]; // индексы выбранных ответов
+  recommendation?: string;
+  needsVacation?: boolean;
 }
 
 export interface PsychTestResult extends TestResult {
