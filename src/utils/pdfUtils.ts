@@ -8,6 +8,18 @@ import { supabase } from "@/integrations/supabase/client";
 declare module "jspdf" {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
+    internal: {
+      scaleFactor: number;
+      pageSize: {
+        width: number;
+        getWidth: () => number;
+        height: number;
+        getHeight: () => number;
+      };
+      pages: number[];
+      getNumberOfPages: () => number;
+      getEncryptor: (objectId: number) => (data: string) => string;
+    };
   }
 }
 
@@ -142,7 +154,8 @@ export const sendTestResultToDirector = async (
         user_id: user.id,
         test_result_id: testResult.id,
         file_path: data.path,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        viewed: false
       });
       
     if (dbError) {

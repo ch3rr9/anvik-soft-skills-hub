@@ -33,3 +33,14 @@ export interface MessageGroup {
   isCurrentUser: boolean;
   messages: FormattedMessage[];
 }
+
+// Add the Message type needed by MessageGroup.tsx
+export interface Message {
+  id: number;
+  senderId: string;
+  senderName: string;
+  content: string;
+  timestamp: string;
+  read: boolean;
+  chatId: string;
+}

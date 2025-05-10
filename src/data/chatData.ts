@@ -16,28 +16,28 @@ export const MOCK_CHATS: ChatRoom[] = [
     name: "Общий чат",
     type: "group",
     participants: ["1", "2", "3", "4", "5"],
-    unreadCount: 3,
+    lastMessage: null
   },
   {
     id: 2,
     name: "Отдел разработки",
     type: "group",
     participants: ["1", "3", "5"],
-    unreadCount: 0,
+    lastMessage: null
   },
   {
     id: 3,
     name: "Иван Директоров",
     type: "direct",
     participants: ["3", "1"],
-    unreadCount: 1,
+    lastMessage: null
   },
   {
     id: 4,
     name: "Мария Кадрова",
     type: "direct",
     participants: ["3", "2"],
-    unreadCount: 0,
+    lastMessage: null
   },
 ];
 
