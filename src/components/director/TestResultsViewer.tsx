@@ -36,7 +36,7 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
         // Get user information for each result
         const enrichedResults = await Promise.all(
           resultsData.map(async (result) => {
-            // Get user details
+            // Get user details - convert user_id to number if needed
             const { data: userData } = await supabase
               .from("users")
               .select("name, position")
@@ -55,7 +55,7 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
               passing_score: result.tests?.passing_score || 0,
               passed: result.passed,
               created_at: result.created_at,
-              viewed: result.viewed || false
+              viewed: false // Default value, as it doesn't exist in test_results table yet
             };
           })
         );
@@ -81,13 +81,8 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
     try {
       setSelectedResult(result);
       
-      // Mark as viewed if not already
+      // Update local state only, since we don't have a "viewed" field in the database yet
       if (!result.viewed) {
-        await supabase
-          .from("test_results")
-          .update({ viewed: true })
-          .eq("id", result.id);
-          
         // Update local state
         setResults(prev => 
           prev.map(r => (r.id === result.id ? { ...r, viewed: true } : r))
@@ -175,7 +170,7 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
                         <TableCell>{result.test_name}</TableCell>
                         <TableCell>
                           {result.passed ? (
-                            <Badge variant="success" className="bg-green-100 text-green-800">
+                            <Badge variant="outline" className="bg-green-100 text-green-800">
                               Пройден
                             </Badge>
                           ) : (
