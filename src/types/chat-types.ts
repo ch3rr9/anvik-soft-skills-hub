@@ -15,7 +15,7 @@ export interface ChatRoom {
   type: "direct" | "group";
   participants: string[];
   lastMessage: ChatMessage | null;
-  unreadCount?: number; // Added unreadCount property
+  // Removed unreadCount property
 }
 
 export interface FormattedMessage {

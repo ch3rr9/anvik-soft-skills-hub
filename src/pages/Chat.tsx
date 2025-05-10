@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { MessageSquare } from "lucide-react";
@@ -81,13 +80,6 @@ const Chat = () => {
         
         // Отметить сообщения как прочитанные
         await markMessagesAsRead(selectedChat.id, user.id);
-        
-        // Обновить список чатов, сбросив счётчик непрочитанных
-        setChatRooms(prevChats => 
-          prevChats.map(chat => 
-            chat.id === selectedChat.id ? { ...chat, unreadCount: 0 } : chat
-          )
-        );
       };
       
       fetchMessages();

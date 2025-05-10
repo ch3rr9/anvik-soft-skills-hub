@@ -6,22 +6,22 @@ import { UserProfile } from "@/types/auth-types";
 import { supabase } from "@/integrations/supabase/client";
 
 // Extend jsPDF with autoTable and internal properties using proper typings
-declare module "jspdf" {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    internal: {
-      scaleFactor: number;
-      pageSize: {
-        width: number;
-        getWidth: () => number;
-        height: number;
-        getHeight: () => number;
-      };
-      pages: number[];
-      getNumberOfPages: () => number;
-      getEncryptor: (objectId: number) => (data: string) => string;
-    };
-  }
+interface JsPDFInternal {
+  scaleFactor: number;
+  pageSize: {
+    width: number;
+    getWidth: () => number;
+    height: number;
+    getHeight: () => number;
+  };
+  pages: number[];
+  getNumberOfPages: () => number;
+  getEncryptor: (objectId: number) => (data: string) => string;
+}
+
+interface JsPDFWithAutoTable extends jsPDF {
+  autoTable: (options: any) => jsPDF;
+  internal: JsPDFInternal;
 }
 
 /**
@@ -33,7 +33,7 @@ export const generateTestResultPDF = (
   user: UserProfile
 ): Blob => {
   // Create a new PDF document
-  const doc = new jsPDF();
+  const doc = new jsPDF() as JsPDFWithAutoTable;
   
   // Add title
   doc.setFontSize(20);
@@ -147,10 +147,9 @@ export const sendTestResultToDirector = async (
       return false;
     }
     
-    // Store reference in the database
-    // Use any() to bypass TypeScript limitations with custom tables
-    const { error: dbError } = await supabase
-      .from('director_reports')
+    // Store reference in the database - using `from` with type assertion
+    const { error: dbError } = await (supabase
+      .from('director_reports') as any)
       .insert({
         test_id: test.id,
         user_id: user.id,
@@ -158,7 +157,7 @@ export const sendTestResultToDirector = async (
         file_path: data.path,
         created_at: new Date().toISOString(),
         viewed: false
-      }) as { data: any, error: any };
+      });
       
     if (dbError) {
       console.error("Error storing PDF reference:", dbError);

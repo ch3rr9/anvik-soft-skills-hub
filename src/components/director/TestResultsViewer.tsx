@@ -1,12 +1,11 @@
 
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText, Download, Eye, CheckCircle } from "lucide-react";
+import { FileText, Download, Eye } from "lucide-react";
 import { UserProfile } from "@/types/auth-types";
 import { DirectorReport } from "@/types/chat-types";
 
@@ -32,23 +31,23 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
       
       setLoading(true);
       try {
-        // Use any() to bypass TypeScript limitations with custom tables
-        const { data, error } = await supabase
-          .from("director_reports")
+        // Use type assertion for director_reports table
+        const { data, error } = await (supabase
+          .from("director_reports") as any)
           .select("*")
-          .order("created_at", { ascending: false }) as { data: any[], error: any };
+          .order("created_at", { ascending: false });
           
         if (error) throw error;
         
         // Map to our interface
-        const reportFiles: TestResultFile[] = data.map(report => ({
+        const reportFiles: TestResultFile[] = data.map((report: any) => ({
           id: report.id,
-          test_id: report.test_id,
-          user_id: report.user_id,
-          test_result_id: report.test_result_id,
-          file_path: report.file_path,
+          testId: report.test_id,
+          userId: report.user_id,
+          testResultId: report.test_result_id,
+          filePath: report.file_path,
           viewed: report.viewed,
-          created_at: report.created_at
+          createdAt: report.created_at
         }));
         
         // Fetch additional information for each report
@@ -57,14 +56,14 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
           const { data: testData } = await supabase
             .from("tests")
             .select("title")
-            .eq("id", report.test_id)
+            .eq("id", report.testId)
             .single();
             
           // Get user name
           const { data: userData } = await supabase
             .from("users")
             .select("name")
-            .eq("id", report.user_id)
+            .eq("id", report.userId)
             .single();
             
           return {
@@ -99,7 +98,7 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
       const { data, error } = await supabase
         .storage
         .from("test-results")
-        .createSignedUrl(report.file_path, 3600); // 1 hour expiration
+        .createSignedUrl(report.filePath, 3600); // 1 hour expiration
         
       if (error) throw error;
       
@@ -107,11 +106,10 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
       
       // Mark as viewed if not already
       if (!report.viewed) {
-        // Use any() to bypass TypeScript limitations with custom tables
-        await supabase
-          .from("director_reports")
+        await (supabase
+          .from("director_reports") as any)
           .update({ viewed: true })
-          .eq("id", report.id) as { data: any, error: any };
+          .eq("id", report.id);
           
         // Update local state
         setReports(prev => 
@@ -135,7 +133,7 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
       const { data, error } = await supabase
         .storage
         .from("test-results")
-        .download(report.file_path);
+        .download(report.filePath);
         
       if (error) throw error;
       
@@ -143,7 +141,7 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
       const url = URL.createObjectURL(data);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `результат_теста_${report.userName}_${new Date(report.created_at).toLocaleDateString()}.pdf`;
+      link.download = `результат_теста_${report.userName}_${new Date(report.createdAt).toLocaleDateString()}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -219,7 +217,7 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
                         </div>
                         <p className="text-sm mt-1">{report.userName}</p>
                         <p className="text-xs mt-1 opacity-70">
-                          {new Date(report.created_at).toLocaleString()}
+                          {new Date(report.createdAt).toLocaleString()}
                         </p>
                       </div>
                       <div>

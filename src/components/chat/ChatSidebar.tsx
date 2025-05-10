@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
 import { ChatRoom } from '@/types/chat-types';
@@ -84,16 +83,7 @@ const ChatSidebar = ({
                       {chat.type === "direct" ? <User className="h-4 w-4" /> : <Users className="h-4 w-4" />}
                     </AvatarFallback>
                   </Avatar>
-                  {chat.unreadCount > 0 && (
-                    <Badge 
-                      className={`absolute -top-1 -right-1 ${
-                        selectedChat?.id === chat.id ? "bg-white text-anvik-primary" : "bg-anvik-primary text-white"
-                      }`}
-                      variant="outline"
-                    >
-                      {chat.unreadCount}
-                    </Badge>
-                  )}
+                  {/* Removed unread count badge */}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={`font-medium truncate ${
