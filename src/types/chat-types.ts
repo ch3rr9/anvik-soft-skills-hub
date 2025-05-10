@@ -15,7 +15,6 @@ export interface ChatRoom {
   type: "direct" | "group";
   participants: string[];
   lastMessage: ChatMessage | null;
-  // Removed unreadCount property
 }
 
 export interface FormattedMessage {
@@ -55,4 +54,10 @@ export interface DirectorReport {
   file_path: string;
   created_at: string;
   viewed: boolean;
+}
+
+// Add this interface for consistency with property naming in TestResultsViewer.tsx
+export interface TestResultFile extends DirectorReport {
+  testName?: string;
+  userName?: string;
 }

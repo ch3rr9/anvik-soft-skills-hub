@@ -1,27 +1,26 @@
-
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import { Test, TestResult } from "@/types/test-types";
 import { UserProfile } from "@/types/auth-types";
 import { supabase } from "@/integrations/supabase/client";
 
-// Extend jsPDF with autoTable and internal properties using proper typings
-interface JsPDFInternal {
-  scaleFactor: number;
-  pageSize: {
-    width: number;
-    getWidth: () => number;
-    height: number;
-    getHeight: () => number;
-  };
-  pages: number[];
-  getNumberOfPages: () => number;
-  getEncryptor: (objectId: number) => (data: string) => string;
-}
-
-interface JsPDFWithAutoTable extends jsPDF {
-  autoTable: (options: any) => jsPDF;
-  internal: JsPDFInternal;
+// Create a proper type for jsPDF with autoTable
+declare module "jspdf" {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+    internal: {
+      scaleFactor: number;
+      pageSize: {
+        width: number;
+        getWidth: () => number;
+        height: number;
+        getHeight: () => number;
+      };
+      pages: number[];
+      getNumberOfPages: () => number;
+      getEncryptor: (objectId: number) => (data: string) => string;
+    };
+  }
 }
 
 /**
@@ -33,7 +32,7 @@ export const generateTestResultPDF = (
   user: UserProfile
 ): Blob => {
   // Create a new PDF document
-  const doc = new jsPDF() as JsPDFWithAutoTable;
+  const doc = new jsPDF();
   
   // Add title
   doc.setFontSize(20);

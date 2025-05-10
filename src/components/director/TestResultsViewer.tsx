@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,12 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText, Download, Eye } from "lucide-react";
 import { UserProfile } from "@/types/auth-types";
-import { DirectorReport } from "@/types/chat-types";
-
-interface TestResultFile extends DirectorReport {
-  testName?: string;
-  userName?: string;
-}
+import { TestResultFile } from "@/types/chat-types";
 
 interface TestResultsViewerProps {
   user: UserProfile;
@@ -42,12 +36,12 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
         // Map to our interface
         const reportFiles: TestResultFile[] = data.map((report: any) => ({
           id: report.id,
-          testId: report.test_id,
-          userId: report.user_id,
-          testResultId: report.test_result_id,
-          filePath: report.file_path,
+          test_id: report.test_id,
+          user_id: report.user_id,
+          test_result_id: report.test_result_id,
+          file_path: report.file_path,
           viewed: report.viewed,
-          createdAt: report.created_at
+          created_at: report.created_at
         }));
         
         // Fetch additional information for each report
@@ -56,14 +50,14 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
           const { data: testData } = await supabase
             .from("tests")
             .select("title")
-            .eq("id", report.testId)
+            .eq("id", report.test_id)
             .single();
             
           // Get user name
           const { data: userData } = await supabase
             .from("users")
             .select("name")
-            .eq("id", report.userId)
+            .eq("id", report.user_id)
             .single();
             
           return {
@@ -98,7 +92,7 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
       const { data, error } = await supabase
         .storage
         .from("test-results")
-        .createSignedUrl(report.filePath, 3600); // 1 hour expiration
+        .createSignedUrl(report.file_path, 3600); // 1 hour expiration
         
       if (error) throw error;
       
@@ -133,7 +127,7 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
       const { data, error } = await supabase
         .storage
         .from("test-results")
-        .download(report.filePath);
+        .download(report.file_path);
         
       if (error) throw error;
       
@@ -141,7 +135,7 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
       const url = URL.createObjectURL(data);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `результат_теста_${report.userName}_${new Date(report.createdAt).toLocaleDateString()}.pdf`;
+      link.download = `результат_теста_${report.userName}_${new Date(report.created_at).toLocaleDateString()}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -217,7 +211,7 @@ const TestResultsViewer: React.FC<TestResultsViewerProps> = ({ user }) => {
                         </div>
                         <p className="text-sm mt-1">{report.userName}</p>
                         <p className="text-xs mt-1 opacity-70">
-                          {new Date(report.createdAt).toLocaleString()}
+                          {new Date(report.created_at).toLocaleString()}
                         </p>
                       </div>
                       <div>
