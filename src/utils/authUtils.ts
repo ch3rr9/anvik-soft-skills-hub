@@ -36,7 +36,7 @@ export const registerUser = async (
         department: userData.department,
         position: userData.position,
         avatar_url: userData.avatarUrl
-      });
+      } as any); // Используем any для обхода проблемы типизации
 
     if (profileError) {
       return { success: false, error: profileError.message };
@@ -102,7 +102,7 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
   }
   
   return {
-    id: userData.id.toString(), // преобразуем id в строку для совместимости с UserProfile
+    id: userData.id.toString(),
     name: userData.name,
     email: userData.email,
     role: userData.role as UserRole,
