@@ -60,17 +60,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Получение профиля пользователя из базы данных
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log("Fetching user profile for ID:", userId);
       const { data: profile } = await supabase
         .from("users")
         .select("*")
-        .eq("id", Number(userId))
+        .eq("id", userId)
         .single();
       
       if (profile) {
+        console.log("User profile found:", profile);
         setAuth({
           isAuthenticated: true,
           user: {
-            id: String(profile.id),
+            id: profile.id.toString(), // Преобразуем идентификатор в строку
             name: profile.name,
             email: profile.email,
             role: profile.role as UserRole,
@@ -81,6 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isLoading: false,
         });
       } else {
+        console.error("No user profile found for ID:", userId);
         // Если профиль не найден, выходим из системы
         supabase.auth.signOut();
         setAuth({
@@ -101,6 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log("Attempting login for:", email);
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -111,6 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
+      console.log("Login successful");
       return true;
     } catch (error) {
       console.error("Error during login:", error);

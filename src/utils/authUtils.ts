@@ -29,7 +29,7 @@ export const registerUser = async (
     const { error: profileError } = await supabase
       .from("users")
       .insert({
-        id: Number(authData.user.id), 
+        id: authData.user.id, // используем UUID как строку
         name: userData.name,
         email: userData.email,
         role: userData.role,
@@ -63,6 +63,7 @@ export const loginUser = async (
     });
 
     if (error) {
+      console.error("Login error:", error.message);
       return { success: false, error: error.message };
     }
 
@@ -93,7 +94,7 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
   const { data: userData } = await supabase
     .from("users")
     .select("*")
-    .eq("id", Number(authData.session.user.id))
+    .eq("id", authData.session.user.id)
     .single();
   
   if (!userData) {
@@ -101,7 +102,7 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
   }
   
   return {
-    id: String(userData.id), 
+    id: userData.id.toString(), // преобразуем id в строку для совместимости с UserProfile
     name: userData.name,
     email: userData.email,
     role: userData.role as UserRole,
