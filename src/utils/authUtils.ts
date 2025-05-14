@@ -26,6 +26,8 @@ export const registerUser = async (
     }
 
     // Создание профиля пользователя в таблице users
+    // Supabase Auth использует UUID (строка), а таблица users использует числовые ID
+    // Поэтому нам нужно конвертировать строковый UUID в число
     const { error: profileError } = await supabase
       .from("users")
       .insert({
@@ -36,9 +38,10 @@ export const registerUser = async (
         department: userData.department,
         position: userData.position,
         avatar_url: userData.avatarUrl
-      } as any); // Используем any для обхода проблемы типизации
+      });
 
     if (profileError) {
+      console.error("Error creating user profile:", profileError);
       return { success: false, error: profileError.message };
     }
 
@@ -102,7 +105,7 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
   }
   
   return {
-    id: userData.id.toString(),
+    id: userData.id.toString(), // Convert number back to string for consistency in our app
     name: userData.name,
     email: userData.email,
     role: userData.role as UserRole,

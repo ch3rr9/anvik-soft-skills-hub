@@ -72,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAuth({
           isAuthenticated: true,
           user: {
-            id: profile.id.toString(),
+            id: profile.id.toString(), // Convert number back to string for consistency
             name: profile.name,
             email: profile.email,
             role: profile.role as UserRole,
