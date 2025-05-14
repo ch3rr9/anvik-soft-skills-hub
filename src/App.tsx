@@ -17,6 +17,7 @@ import Schedule from "./pages/Schedule";
 import Chat from "./pages/Chat";
 import Forbidden from "./pages/Forbidden";
 import NotFound from "./pages/NotFound";
+import AdminUserCreator from "./pages/AdminUserCreator";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
             {/* Открытые маршруты */}
             <Route path="/login" element={<Login />} />
             <Route path="/forbidden" element={<Forbidden />} />
+            <Route path="/admin/create" element={<AdminUserCreator />} />
 
             {/* Защищенные маршруты */}
             <Route path="/" element={
