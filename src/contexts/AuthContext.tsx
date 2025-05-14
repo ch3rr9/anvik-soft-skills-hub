@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: profile } = await supabase
         .from("users")
         .select("*")
-        .eq("id", userId)
+        .eq("id", parseInt(userId, 10)) // Convert string userId to number
         .single();
       
       if (profile) {

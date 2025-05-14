@@ -29,7 +29,7 @@ export const registerUser = async (
     const { error: profileError } = await supabase
       .from("users")
       .insert({
-        id: authData.user.id, // используем UUID как строку
+        id: parseInt(authData.user.id, 10), // Convert UUID string to number for the users table
         name: userData.name,
         email: userData.email,
         role: userData.role,
@@ -94,7 +94,7 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
   const { data: userData } = await supabase
     .from("users")
     .select("*")
-    .eq("id", authData.session.user.id)
+    .eq("id", parseInt(authData.session.user.id, 10)) // Convert string to number for the query
     .single();
   
   if (!userData) {
