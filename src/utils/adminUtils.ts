@@ -39,6 +39,7 @@ export const createAdminUser = async (
         role: "director" as UserRole, // Роль администратора
         department,
         position,
+        password, // Добавляем пароль в новый столбец
       });
 
     if (profileError) {

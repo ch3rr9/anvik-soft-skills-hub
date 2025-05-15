@@ -161,6 +161,7 @@ export type Database = {
           email: string
           id: number
           name: string
+          password: string
           position: string | null
           role: string
         }
@@ -171,6 +172,7 @@ export type Database = {
           email?: string
           id?: number
           name?: string
+          password?: string
           position?: string | null
           role?: string
         }
@@ -181,6 +183,7 @@ export type Database = {
           email?: string
           id?: number
           name?: string
+          password?: string
           position?: string | null
           role?: string
         }

@@ -2,10 +2,11 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { AuthState, UserProfile, UserRole } from "../types/auth-types";
 import { supabase } from "@/integrations/supabase/client";
+import { loginUser, logoutUser } from "@/utils/authUtils";
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   hasPermission: (roles: UserRole[]) => boolean;
 }
 
@@ -105,17 +106,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       console.log("Attempting login for:", email);
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { success, user } = await loginUser(email, password);
 
-      if (error) {
-        console.error("Login error:", error.message);
+      if (!success || !user) {
+        console.error("Login failed");
         return false;
       }
       
-      console.log("Login successful");
+      console.log("Login successful, user:", user);
       return true;
     } catch (error) {
       console.error("Error during login:", error);
@@ -124,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    await logoutUser();
   };
 
   const hasPermission = (roles: UserRole[]): boolean => {
