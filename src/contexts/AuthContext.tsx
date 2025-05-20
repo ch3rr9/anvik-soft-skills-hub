@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { AuthState, UserProfile, UserRole } from "../types/auth-types";
 import { supabase } from "@/integrations/supabase/client";
 import { loginUser, logoutUser } from "@/utils/authUtils";
+import { toast } from "@/hooks/use-toast";
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<boolean>;
@@ -23,6 +24,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initAuth = async () => {
       try {
+        console.log("Initializing auth...");
+        
+        // Проверка наличия пользователя в localStorage
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            console.log("Found stored user:", parsedUser);
+            setAuth({
+              isAuthenticated: true,
+              user: parsedUser,
+              isLoading: false,
+            });
+            return;
+          } catch (e) {
+            console.error("Error parsing stored user:", e);
+            localStorage.removeItem("user");
+          }
+        }
+        
+        // Если пользователь не найден в localStorage, пытаемся получить сессию через Supabase
+        console.log("Checking for Supabase session...");
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          console.log("Found Supabase session, fetching user profile...");
+          await fetchUserProfile(session.user.id);
+        } else {
+          console.log("No active session found");
+          setAuth({
+            isAuthenticated: false,
+            user: null,
+            isLoading: false,
+          });
+        }
+        
         // Установка слушателя изменений авторизации
         const { data: authListener } = supabase.auth.onAuthStateChange(
           (event, session) => {
@@ -30,6 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (event === "SIGNED_IN" && session) {
               fetchUserProfile(session.user.id);
             } else if (event === "SIGNED_OUT") {
+              localStorage.removeItem("user");
               setAuth({
                 isAuthenticated: false,
                 user: null,
@@ -38,18 +76,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
         );
-        
-        // Получение текущей сессии
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          await fetchUserProfile(session.user.id);
-        } else {
-          setAuth({
-            isAuthenticated: false,
-            user: null,
-            isLoading: false,
-          });
-        }
         
         return () => {
           // Очистка слушателя при размонтировании
@@ -75,8 +101,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: profile, error } = await supabase
         .from("users")
         .select("*")
-        .eq("id", parseInt(userId, 10)) // Convert string userId to number
-        .maybeSingle();
+        .eq("id", parseInt(userId, 10))
+        .limit(1);
       
       if (error) {
         console.error("Error fetching profile:", error);
@@ -88,24 +114,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      if (profile) {
-        console.log("User profile found:", profile);
+      if (profile && profile.length > 0) {
+        const user = profile[0];
+        console.log("User profile found:", user);
+        
+        const userProfile: UserProfile = {
+          id: user.id.toString(),
+          name: user.name,
+          email: user.email,
+          role: user.role as UserRole,
+          department: user.department,
+          position: user.position,
+          avatarUrl: user.avatar_url
+        };
+        
+        // Сохраняем пользователя в localStorage
+        localStorage.setItem("user", JSON.stringify(userProfile));
+        
         setAuth({
           isAuthenticated: true,
-          user: {
-            id: profile.id.toString(),
-            name: profile.name,
-            email: profile.email,
-            role: profile.role as UserRole,
-            department: profile.department,
-            position: profile.position,
-            avatarUrl: profile.avatar_url
-          },
+          user: userProfile,
           isLoading: false,
         });
       } else {
         console.error("No user profile found for ID:", userId);
-        // Если профиль не найден, выходим из системы
+        localStorage.removeItem("user");
         await supabase.auth.signOut();
         setAuth({
           isAuthenticated: false,
@@ -125,15 +158,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      setAuth(prev => ({ ...prev, isLoading: true }));
       console.log("Attempting login for:", email);
+      
       const { success, user, error } = await loginUser(email, password);
 
       if (!success || !user) {
         console.error("Login failed:", error);
+        toast({
+          title: "Ошибка входа",
+          description: error || "Неверный email или пароль",
+          variant: "destructive",
+        });
+        setAuth(prev => ({ ...prev, isLoading: false }));
         return false;
       }
       
       console.log("Login successful, user:", user);
+      
+      // Сохраняем пользователя в localStorage
+      localStorage.setItem("user", JSON.stringify(user));
       
       // Устанавливаем состояние пользователя вручную для немедленного отображения
       setAuth({
@@ -142,24 +186,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading: false,
       });
       
+      toast({
+        title: "Вход выполнен",
+        description: `Добро пожаловать, ${user.name}!`,
+      });
+      
       return true;
     } catch (error) {
       console.error("Error during login:", error);
+      toast({
+        title: "Ошибка входа",
+        description: "Произошла непредвиденная ошибка",
+        variant: "destructive",
+      });
+      setAuth(prev => ({ ...prev, isLoading: false }));
       return false;
     }
   };
 
   const logout = async () => {
     try {
+      setAuth(prev => ({ ...prev, isLoading: true }));
       await logoutUser();
+      // Удаляем пользователя из localStorage
+      localStorage.removeItem("user");
       // Немедленно обновляем состояние после выхода
       setAuth({
         isAuthenticated: false,
         user: null,
         isLoading: false,
       });
+      toast({
+        title: "Выход выполнен",
+        description: "Вы вышли из системы",
+      });
     } catch (error) {
       console.error("Error during logout:", error);
+      setAuth(prev => ({ ...prev, isLoading: false }));
     }
   };
 

@@ -52,76 +52,70 @@ export const registerUser = async (
 };
 
 /**
- * Авторизация пользователя - полностью переработанная функция
+ * Авторизация пользователя - улучшенная реализация
  */
 export const loginUser = async (
   email: string, 
   password: string
 ): Promise<{ success: boolean; error?: string; user?: UserProfile }> => {
   try {
-    console.log("Login attempt for:", email);
+    console.log("Attempting login with email:", email);
     
-    // Ищем пользователя в таблице users
+    // Ищем пользователя в таблице users по email
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("id, name, email, role, department, position, avatar_url, password")
+      .select("*")
       .eq("email", email)
-      .maybeSingle();
+      .limit(1);
 
     console.log("User query result:", userData, userError);
 
-    // Если пользователь не найден или пароль не совпадает
     if (userError) {
-      console.error("Database error:", userError.message);
+      console.error("Database query error:", userError.message);
       return { success: false, error: "Ошибка базы данных" };
     }
     
-    if (!userData) {
-      console.error("User not found");
+    if (!userData || userData.length === 0) {
+      console.error("No user found with email:", email);
       return { success: false, error: "Неверный email или пароль" };
     }
     
-    if (userData.password !== password) {
-      console.error("Password mismatch");
+    const user = userData[0];
+    
+    // Проверяем совпадение пароля
+    if (user.password !== password) {
+      console.error("Password mismatch for user:", email);
       return { success: false, error: "Неверный email или пароль" };
     }
     
-    // Если пользователь найден и пароль совпадает, выполняем вход через Supabase Auth
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    if (error) {
-      // Если произошла ошибка при входе через Supabase Auth, но пользователь и пароль в базе верные,
-      // мы все равно можем продолжить и создать сессию самостоятельно
-      console.warn("Supabase auth error (trying to work around it):", error.message);
+    // Пользователь найден и пароль совпадает - пытаемся войти через Supabase Auth
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       
-      // Создаем сессию вручную без использования supabase auth
-      const userProfile: UserProfile = {
-        id: userData.id.toString(),
-        name: userData.name,
-        email: userData.email,
-        role: userData.role as UserRole,
-        department: userData.department,
-        position: userData.position,
-        avatarUrl: userData.avatar_url
-      };
-      
-      return { success: true, user: userProfile };
+      if (authError) {
+        console.warn("Supabase auth error (non-critical):", authError.message);
+        // Продолжаем работу даже если Supabase Auth выдал ошибку
+      }
+    } catch (authError) {
+      console.warn("Supabase auth exception (non-critical):", authError);
+      // Продолжаем работу даже при ошибке
     }
     
-    // Преобразуем данные пользователя в нужный формат
+    // Создаем профиль пользователя для возврата
     const userProfile: UserProfile = {
-      id: userData.id.toString(),
-      name: userData.name,
-      email: userData.email,
-      role: userData.role as UserRole,
-      department: userData.department,
-      position: userData.position,
-      avatarUrl: userData.avatar_url
+      id: user.id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role as UserRole,
+      department: user.department,
+      position: user.position,
+      avatarUrl: user.avatar_url
     };
 
+    console.log("Login successful, returning user profile:", userProfile);
     return { success: true, user: userProfile };
   } catch (error) {
     console.error("Unexpected error during login:", error);
@@ -149,7 +143,7 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
   const { data: userData } = await supabase
     .from("users")
     .select("*")
-    .eq("id", parseInt(authData.session.user.id, 10)) // Convert string to number for the query
+    .eq("id", parseInt(authData.session.user.id, 10))
     .single();
   
   if (!userData) {
@@ -157,7 +151,7 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
   }
   
   return {
-    id: userData.id.toString(), // Convert number back to string for consistency in our app
+    id: userData.id.toString(),
     name: userData.name,
     email: userData.email,
     role: userData.role as UserRole,

@@ -4,7 +4,6 @@ import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Lock, User, LogIn } from "lucide-react";
@@ -22,7 +21,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login = () => {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -37,6 +36,8 @@ const Login = () => {
   });
 
   const handleSubmit = async (values: LoginFormValues) => {
+    if (isLoading) return;
+    
     setIsLoading(true);
     
     try {
@@ -44,17 +45,7 @@ const Login = () => {
       const success = await login(values.email, values.password);
       
       if (success) {
-        toast({
-          title: "Вход выполнен успешно",
-          description: "Добро пожаловать в систему!",
-        });
         navigate("/");
-      } else {
-        toast({
-          title: "Ошибка входа",
-          description: "Неверный адрес электронной почты или пароль",
-          variant: "destructive",
-        });
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -162,9 +153,9 @@ const Login = () => {
                 <Button
                   type="submit"
                   className="w-full bg-anvik-primary hover:bg-anvik-primary/90"
-                  disabled={isLoading}
+                  disabled={isLoading || authLoading}
                 >
-                  {isLoading ? (
+                  {(isLoading || authLoading) ? (
                     <div className="flex items-center">
                       <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-t-transparent"></div>
                       <span>Вход...</span>
@@ -184,36 +175,36 @@ const Login = () => {
         <div className="text-center text-sm text-muted-foreground bg-card p-4 rounded-lg shadow-sm border border-border">
           <p className="font-medium mb-3">Демо-аккаунты для тестирования:</p>
           <div className="grid grid-cols-1 gap-2">
-            <div className="p-3 bg-muted rounded-md hover:bg-muted/80 cursor-pointer transition-colors flex items-center justify-between"
+            <div className="p-3 bg-muted rounded-md hover:bg-muted/80 cursor-pointer transition-colors flex flex-col md:flex-row md:items-center md:justify-between gap-2"
                  onClick={() => handleDemoLogin("director@anvik-soft.com", "director123")}>
               <p className="font-medium"><strong className="text-anvik-primary">Директор:</strong></p>
-              <div className="flex gap-2">
-                <p>director@anvik-soft.com</p>
-                <span className="text-muted-foreground">/ director123</span>
+              <div className="flex flex-col md:flex-row md:gap-2">
+                <p className="font-mono text-sm">director@anvik-soft.com</p>
+                <span className="text-muted-foreground font-mono text-sm">/ director123</span>
               </div>
             </div>
-            <div className="p-3 bg-muted rounded-md hover:bg-muted/80 cursor-pointer transition-colors flex items-center justify-between"
+            <div className="p-3 bg-muted rounded-md hover:bg-muted/80 cursor-pointer transition-colors flex flex-col md:flex-row md:items-center md:justify-between gap-2"
                  onClick={() => handleDemoLogin("hr@anvik-soft.com", "hr123")}>
               <p className="font-medium"><strong className="text-anvik-primary">HR-менеджер:</strong></p>
-              <div className="flex gap-2">
-                <p>hr@anvik-soft.com</p>
-                <span className="text-muted-foreground">/ hr123</span>
+              <div className="flex flex-col md:flex-row md:gap-2">
+                <p className="font-mono text-sm">hr@anvik-soft.com</p>
+                <span className="text-muted-foreground font-mono text-sm">/ hr123</span>
               </div>
             </div>
-            <div className="p-3 bg-muted rounded-md hover:bg-muted/80 cursor-pointer transition-colors flex items-center justify-between"
+            <div className="p-3 bg-muted rounded-md hover:bg-muted/80 cursor-pointer transition-colors flex flex-col md:flex-row md:items-center md:justify-between gap-2"
                  onClick={() => handleDemoLogin("employee@anvik-soft.com", "employee123")}>
               <p className="font-medium"><strong className="text-anvik-primary">Сотрудник:</strong></p>
-              <div className="flex gap-2">
-                <p>employee@anvik-soft.com</p>
-                <span className="text-muted-foreground">/ employee123</span>
+              <div className="flex flex-col md:flex-row md:gap-2">
+                <p className="font-mono text-sm">employee@anvik-soft.com</p>
+                <span className="text-muted-foreground font-mono text-sm">/ employee123</span>
               </div>
             </div>
-            <div className="p-3 bg-muted rounded-md hover:bg-muted/80 cursor-pointer transition-colors flex items-center justify-between"
+            <div className="p-3 bg-muted rounded-md hover:bg-muted/80 cursor-pointer transition-colors flex flex-col md:flex-row md:items-center md:justify-between gap-2"
                  onClick={() => handleDemoLogin("manager@anvik-soft.com", "manager123")}>
               <p className="font-medium"><strong className="text-anvik-primary">Менеджер:</strong></p>
-              <div className="flex gap-2">
-                <p>manager@anvik-soft.com</p>
-                <span className="text-muted-foreground">/ manager123</span>
+              <div className="flex flex-col md:flex-row md:gap-2">
+                <p className="font-mono text-sm">manager@anvik-soft.com</p>
+                <span className="text-muted-foreground font-mono text-sm">/ manager123</span>
               </div>
             </div>
           </div>
