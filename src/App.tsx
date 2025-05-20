@@ -18,64 +18,74 @@ import Chat from "./pages/Chat";
 import Forbidden from "./pages/Forbidden";
 import NotFound from "./pages/NotFound";
 import AdminUserCreator from "./pages/AdminUserCreator";
+import { AnimatePresence } from "./components/ui/animate-presence";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Открытые маршруты */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/forbidden" element={<Forbidden />} />
-            <Route path="/admin/create" element={<AdminUserCreator />} />
+      <BrowserRouter>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
+          <AnimatePresence>
+            <Routes>
+              {/* Открытые маршруты */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/forbidden" element={<Forbidden />} />
+              <Route path="/admin/create" element={<AdminUserCreator />} />
 
-            {/* Защищенные маршруты */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Home />
-                </Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Profile />
-                </Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/tests" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Tests />
-                </Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/schedule" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Schedule />
-                </Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/chat" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Chat />
-                </Layout>
-              </ProtectedRoute>
-            } />
+              {/* Защищенные маршруты */}
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Home />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Profile />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/tests" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Tests />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/schedule" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Schedule />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/chat" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Chat />
+                  </Layout>
+                </ProtectedRoute>
+              } />
 
-            {/* Маршрут по умолчанию */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+              {/* Маршрут по умолчанию */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AnimatePresence>
+        </AuthProvider>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );

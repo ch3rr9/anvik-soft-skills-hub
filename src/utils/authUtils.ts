@@ -11,32 +11,38 @@ export const registerUser = async (
   userData: Omit<UserProfile, "id">
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    // Регистрация пользователя через Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (authError) {
-      return { success: false, error: authError.message };
+    console.log("Registering user:", email, userData);
+    // Проверка, существует ли уже пользователь с таким email
+    const { data: existingUsers, error: checkError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", email);
+    
+    if (checkError) {
+      console.error("Error checking existing user:", checkError.message);
+      return { success: false, error: checkError.message };
     }
-
-    if (!authData.user) {
-      return { success: false, error: "Не удалось создать пользователя" };
+    
+    if (existingUsers && existingUsers.length > 0) {
+      console.log("User already exists:", existingUsers);
+      return { success: false, error: "Пользователь с таким email уже существует" };
     }
-
+    
+    // Генерация ID для пользователя
+    const userId = Math.floor(1000000000 + Math.random() * 9000000000);
+    
     // Создание профиля пользователя в таблице users
     const { error: profileError } = await supabase
       .from("users")
       .insert({
-        id: parseInt(authData.user.id, 10), // Convert UUID string to number for the users table
+        id: userId,
         name: userData.name,
         email: userData.email,
         role: userData.role,
         department: userData.department,
         position: userData.position,
         avatar_url: userData.avatarUrl,
-        password: password // Сохраняем пароль в новый столбец password
+        password: password
       });
 
     if (profileError) {
@@ -44,6 +50,23 @@ export const registerUser = async (
       return { success: false, error: profileError.message };
     }
 
+    // Создание записи в Supabase Auth (опционально)
+    try {
+      const { error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (authError) {
+        console.warn("Non-critical Supabase Auth error:", authError.message);
+        // Не возвращаем ошибку, так как пользователь уже создан в таблице users
+      }
+    } catch (authError) {
+      console.warn("Auth registration non-critical error:", authError);
+      // Продолжаем, так как пользователь уже создан в таблице users
+    }
+
+    console.log("User registered successfully with ID:", userId);
     return { success: true };
   } catch (error) {
     console.error("Error during registration:", error);
@@ -52,7 +75,7 @@ export const registerUser = async (
 };
 
 /**
- * Авторизация пользователя - улучшенная реализация
+ * Авторизация пользователя
  */
 export const loginUser = async (
   email: string, 
@@ -110,9 +133,9 @@ export const loginUser = async (
       name: user.name,
       email: user.email,
       role: user.role as UserRole,
-      department: user.department,
-      position: user.position,
-      avatarUrl: user.avatar_url
+      department: user.department || "",
+      position: user.position || "",
+      avatarUrl: user.avatar_url || ""
     };
 
     console.log("Login successful, returning user profile:", userProfile);
@@ -134,29 +157,105 @@ export const logoutUser = async (): Promise<void> => {
  * Получение текущего пользователя
  */
 export const getCurrentUser = async (): Promise<UserProfile | null> => {
-  const { data: authData } = await supabase.auth.getSession();
-  
-  if (!authData.session?.user) {
+  try {
+    // Проверяем сессию в Supabase Auth
+    const { data: authData } = await supabase.auth.getSession();
+    
+    if (authData.session?.user) {
+      // Если есть сессия, пытаемся получить пользователя по ID
+      const { data: userData } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", parseInt(authData.session.user.id, 10))
+        .maybeSingle();
+      
+      if (userData) {
+        return {
+          id: userData.id.toString(),
+          name: userData.name,
+          email: userData.email,
+          role: userData.role as UserRole,
+          department: userData.department || "",
+          position: userData.position || "",
+          avatarUrl: userData.avatar_url || ""
+        };
+      }
+    }
+    
+    // Если нет сессии в Supabase Auth или пользователя в БД,
+    // проверяем localStorage
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        return JSON.parse(storedUser);
+      } catch (e) {
+        console.error("Error parsing stored user:", e);
+        localStorage.removeItem("user");
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Error getting current user:", error);
     return null;
   }
-  
-  const { data: userData } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", parseInt(authData.session.user.id, 10))
-    .single();
-  
-  if (!userData) {
-    return null;
+};
+
+/**
+ * Создание демо-аккаунтов для разных ролей
+ */
+export const createDemoAccounts = async (): Promise<void> => {
+  const demoAccounts = [
+    {
+      email: "director@anvik-soft.com",
+      password: "director123",
+      name: "Александр Директоров",
+      role: "director" as UserRole,
+      department: "Руководство",
+      position: "Генеральный директор",
+      avatarUrl: "https://i.pravatar.cc/150?u=director"
+    },
+    {
+      email: "hr@anvik-soft.com",
+      password: "hr123",
+      name: "Елена Кадрова",
+      role: "hr" as UserRole,
+      department: "HR отдел",
+      position: "HR менеджер",
+      avatarUrl: "https://i.pravatar.cc/150?u=hr"
+    },
+    {
+      email: "manager@anvik-soft.com",
+      password: "manager123",
+      name: "Михаил Управленцев",
+      role: "manager" as UserRole,
+      department: "Отдел разработки",
+      position: "Руководитель проектов",
+      avatarUrl: "https://i.pravatar.cc/150?u=manager"
+    },
+    {
+      email: "employee@anvik-soft.com",
+      password: "employee123",
+      name: "Ирина Сотрудникова",
+      role: "employee" as UserRole,
+      department: "Отдел разработки",
+      position: "Frontend разработчик",
+      avatarUrl: "https://i.pravatar.cc/150?u=employee"
+    }
+  ];
+
+  for (const account of demoAccounts) {
+    const { email, password, ...userData } = account;
+    
+    // Проверяем, существует ли уже пользователь с таким email
+    const { data: existingUsers } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", email);
+    
+    if (!existingUsers || existingUsers.length === 0) {
+      // Если пользователя нет, создаем его
+      await registerUser(email, password, userData);
+    }
   }
-  
-  return {
-    id: userData.id.toString(),
-    name: userData.name,
-    email: userData.email,
-    role: userData.role as UserRole,
-    department: userData.department,
-    position: userData.position,
-    avatarUrl: userData.avatar_url
-  };
 };

@@ -2,8 +2,10 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { AuthState, UserProfile, UserRole } from "../types/auth-types";
 import { supabase } from "@/integrations/supabase/client";
-import { loginUser, logoutUser } from "@/utils/authUtils";
+import { createDemoAccounts, loginUser, logoutUser } from "@/utils/authUtils";
+import { initializeDatabase } from "@/utils/databaseUtils";
 import { toast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<boolean>;
@@ -19,6 +21,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user: null,
     isLoading: true,
   });
+  const navigate = useNavigate();
+
+  // Создаем демо-аккаунты и инициализируем базу данных при первой загрузке
+  useEffect(() => {
+    const initApp = async () => {
+      try {
+        await createDemoAccounts();
+        console.log("Demo accounts created or verified");
+        
+        await initializeDatabase();
+        console.log("Database initialized");
+      } catch (error) {
+        console.error("Error initializing app data:", error);
+      }
+    };
+    
+    initApp();
+  }, []);
 
   // Проверка сессии и инициализация состояния
   useEffect(() => {
@@ -123,9 +143,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: user.name,
           email: user.email,
           role: user.role as UserRole,
-          department: user.department,
-          position: user.position,
-          avatarUrl: user.avatar_url
+          department: user.department || "",
+          position: user.position || "",
+          avatarUrl: user.avatar_url || ""
         };
         
         // Сохраняем пользователя в localStorage
@@ -189,7 +209,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast({
         title: "Вход выполнен",
         description: `Добро пожаловать, ${user.name}!`,
+        className: "animate-slide-up"
       });
+
+      // Перенаправляем пользователя на главную страницу
+      navigate('/');
       
       return true;
     } catch (error) {
@@ -220,6 +244,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         title: "Выход выполнен",
         description: "Вы вышли из системы",
       });
+      // Перенаправляем на страницу входа
+      navigate('/login');
     } catch (error) {
       console.error("Error during logout:", error);
       setAuth(prev => ({ ...prev, isLoading: false }));
