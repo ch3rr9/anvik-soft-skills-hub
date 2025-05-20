@@ -65,7 +65,7 @@ export const loginUser = async (
       .select("*")
       .eq("email", email)
       .eq("password", password)
-      .single();
+      .maybeSingle(); // Используем maybeSingle() вместо single() чтобы избежать ошибки при множественных результатах
 
     if (userError || !userData) {
       console.error("Login error:", userError?.message || "Неверный email или пароль");

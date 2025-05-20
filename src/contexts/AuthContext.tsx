@@ -24,9 +24,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initAuth = async () => {
       // Установка слушателя изменений авторизации
       const { data: authListener } = supabase.auth.onAuthStateChange(
-        (event, session) => {
+        async (event, session) => {
+          console.log("Auth state change event:", event);
           if (event === "SIGNED_IN" && session) {
-            fetchUserProfile(session.user.id);
+            await fetchUserProfile(session.user.id);
           } else if (event === "SIGNED_OUT") {
             setAuth({
               isAuthenticated: false,
@@ -66,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from("users")
         .select("*")
         .eq("id", parseInt(userId, 10)) // Convert string userId to number
-        .single();
+        .maybeSingle(); // Используем maybeSingle() вместо single()
       
       if (profile) {
         console.log("User profile found:", profile);
@@ -86,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         console.error("No user profile found for ID:", userId);
         // Если профиль не найден, выходим из системы
-        supabase.auth.signOut();
+        await supabase.auth.signOut();
         setAuth({
           isAuthenticated: false,
           user: null,

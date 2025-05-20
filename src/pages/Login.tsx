@@ -14,13 +14,17 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
+      console.log(`Attempting to login with email: ${email}`);
       const success = await login(email, password);
+      
       if (success) {
         toast({
           title: "Вход выполнен успешно",
@@ -28,6 +32,7 @@ const Login = () => {
         });
         navigate("/");
       } else {
+        setError("Неверный адрес электронной почты или пароль");
         toast({
           title: "Ошибка входа",
           description: "Неверный адрес электронной почты или пароль",
@@ -35,6 +40,8 @@ const Login = () => {
         });
       }
     } catch (error) {
+      console.error("Login error:", error);
+      setError("Произошла ошибка при попытке входа");
       toast({
         title: "Ошибка авторизации",
         description: "Произошла ошибка при попытке входа",
@@ -72,6 +79,11 @@ const Login = () => {
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
+              {error && (
+                <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+                  {error}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
