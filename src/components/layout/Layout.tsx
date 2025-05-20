@@ -13,7 +13,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { isTransitioning } = useAnimation();
 
   if (!isAuthenticated) {
-    return <>{children}</>;
+    return (
+      <div className="animate-fade-in">
+        {children}
+      </div>
+    );
   }
 
   return (

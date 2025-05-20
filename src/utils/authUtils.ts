@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfile, UserRole } from "@/types/auth-types";
 
@@ -105,7 +104,7 @@ export const loginUser = async (
     
     const user = userData[0];
     
-    // Проверяем совпадение пароля
+    // Проверяем совпадени�� пароля
     if (user.password !== password) {
       console.error("Password mismatch for user:", email);
       return { success: false, error: "Неверный email или пароль" };
@@ -247,15 +246,7 @@ export const createDemoAccounts = async (): Promise<void> => {
   for (const account of demoAccounts) {
     const { email, password, ...userData } = account;
     
-    // Проверяем, существует ли уже пользователь с таким email
-    const { data: existingUsers } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", email);
-    
-    if (!existingUsers || existingUsers.length === 0) {
-      // Если пользователя нет, создаем его
-      await registerUser(email, password, userData);
-    }
+    // Исправлено: Явно добавляем email в userData, чтобы соответствовать типу Omit<UserProfile, "id">
+    await registerUser(email, password, { ...userData, email });
   }
 };

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -145,21 +144,23 @@ export const createTestResults = async (): Promise<void> => {
         // 50% шанс, что пользователь прошел тест
         if (Math.random() > 0.5) {
           const passed = Math.random() > 0.3; // 70% шанс сдать тест
-          const maxScore = test.questions.length * 10;
+          // Исправлено: Проверяем, является ли test.questions массивом
+          const questionCount = Array.isArray(test.questions) ? test.questions.length : 0;
+          const maxScore = questionCount * 10;
           const score = passed 
             ? Math.floor(maxScore * (0.7 + Math.random() * 0.3))  // От 70% до 100% для сдавших
             : Math.floor(maxScore * (0.3 + Math.random() * 0.4)); // От 30% до 70% для несдавших
           
-          // Генерируем ответы
-          const answers = test.questions.map((q: any) => {
+          // Исправлено: Проверяем, является ли test.questions массивом, прежде чем вызвать map
+          const answers = Array.isArray(test.questions) ? test.questions.map((q: any) => {
             return {
               question_id: q.question,
               answer: q.type === "text" ? "Пример ответа пользователя" : 
                       q.type === "scale" ? Math.floor(1 + Math.random() * 10) : 
-                      Math.floor(Math.random() * q.options.length),
+                      Math.floor(Math.random() * (Array.isArray(q.options) ? q.options.length : 0)),
               correct: Math.random() > 0.3 // 70% правильных ответов
             };
-          });
+          }) : [];
           
           // Добавляем результаты
           await supabase.from("test_results").insert({
