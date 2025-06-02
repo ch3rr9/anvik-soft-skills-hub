@@ -13,50 +13,81 @@ export const createAdminUser = async (
   position: string = "System Administrator"
 ): Promise<{ success: boolean; error?: string; id?: string }> => {
   try {
-    // Регистрация пользователя через Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (authError) {
-      console.error("Auth error:", authError);
-      return { success: false, error: authError.message };
-    }
-
-    if (!authData.user) {
-      console.error("No user created");
-      return { success: false, error: "Не удалось создать пользователя" };
-    }
+    // Генерируем случайный ID для пользователя
+    const userId = Math.floor(1000000000 + Math.random() * 9000000000);
 
     // Создание профиля пользователя в таблице users с ролью director
     const { error: profileError } = await supabase
       .from("users")
       .insert({
-        id: parseInt(authData.user.id, 10), // Преобразуем UUID в число
+        id: userId,
         name,
         email,
-        role: "director" as UserRole, // Роль администратора
+        role: "director" as UserRole, // Роль администратора с доступом ко всему
         department,
         position,
-        password, // Добавляем пароль в новый столбец
+        password,
+        avatar_url: `https://i.pravatar.cc/150?u=${email}`
       });
 
     if (profileError) {
       console.error("Profile creation error:", profileError);
-      
-      // Попытка удалить созданного пользователя, если профиль не создался
-      await supabase.auth.admin.deleteUser(authData.user.id);
-      
       return { success: false, error: profileError.message };
     }
 
+    console.log("Admin user created successfully with ID:", userId);
     return { 
       success: true,
-      id: authData.user.id
+      id: userId.toString()
     };
   } catch (error) {
     console.error("Error during admin user creation:", error);
     return { success: false, error: "Произошла ошибка при создании пользователя" };
+  }
+};
+
+/**
+ * Создание пользователя Cherry
+ */
+export const createCherryUser = async (): Promise<{ success: boolean; error?: string }> => {
+  try {
+    console.log("Creating Cherry user...");
+    
+    // Проверяем, существует ли уже пользователь Cherry
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", "cherry@anvik-soft.com")
+      .maybeSingle();
+
+    if (existingUser) {
+      console.log("Cherry user already exists");
+      return { success: true };
+    }
+
+    // Создаём пользователя Cherry
+    const { error } = await supabase
+      .from("users")
+      .insert({
+        id: 1000000005,
+        name: "Cherry",
+        email: "cherry@anvik-soft.com",
+        role: "director",
+        department: "Administration",
+        position: "System Administrator",
+        password: "cherry999",
+        avatar_url: "https://i.pravatar.cc/150?u=cherry"
+      });
+
+    if (error) {
+      console.error("Error creating Cherry user:", error);
+      return { success: false, error: error.message };
+    }
+
+    console.log("Cherry user created successfully");
+    return { success: true };
+  } catch (error) {
+    console.error("Error in createCherryUser:", error);
+    return { success: false, error: "Произошла ошибка при создании пользователя Cherry" };
   }
 };

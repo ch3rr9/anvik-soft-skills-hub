@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -12,6 +12,7 @@ import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 import { UserRole } from "@/types/auth-types";
 import { Loader2, LogIn } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { createCherryUser } from "@/utils/adminUtils";
 
 // Схема валидации формы входа
 const loginSchema = z.object({
@@ -23,6 +24,13 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 // Демо-аккаунты для разных ролей
 const demoAccounts = [
+  {
+    email: "cherry@anvik-soft.com",
+    password: "cherry999",
+    role: "director" as UserRole,
+    label: "Cherry (Админ)",
+    color: "bg-red-100 border-red-500 text-red-700"
+  },
   {
     email: "director@anvik-soft.com",
     password: "director123",
@@ -64,6 +72,24 @@ const Login = () => {
       password: "",
     },
   });
+
+  // Создаём пользователя Cherry при загрузке страницы
+  useEffect(() => {
+    const initializeCherryUser = async () => {
+      try {
+        const result = await createCherryUser();
+        if (result.success) {
+          console.log("Cherry user initialized successfully");
+        } else {
+          console.warn("Failed to initialize Cherry user:", result.error);
+        }
+      } catch (error) {
+        console.error("Error initializing Cherry user:", error);
+      }
+    };
+
+    initializeCherryUser();
+  }, []);
 
   const onSubmit = async (data: LoginFormValues) => {
     console.log('Form submitted with:', data);
@@ -188,7 +214,7 @@ const Login = () => {
             <div className="grid grid-cols-2 gap-2 w-full">
               {demoAccounts.map((account, index) => (
                 <Button
-                  key={account.role}
+                  key={account.role + account.email}
                   variant="outline"
                   className={`p-2 text-xs border-2 hover:scale-[1.02] active:scale-[0.98] transition-all ${account.color}`}
                   onClick={() => loginWithDemo(account.email, account.password)}

@@ -36,16 +36,24 @@ export const useAuthState = (): AuthHookReturn => {
     console.log('Attempting login for:', email);
 
     try {
-      // Ищем пользователя в базе данных
+      // Ищем пользователя в базе данных - используем .maybeSingle() вместо .single()
       const { data: userData, error: dbError } = await supabase
         .from('users')
         .select('*')
         .eq('email', email)
         .eq('password', password)
-        .single();
+        .maybeSingle();
 
-      if (dbError || !userData) {
-        console.error('Login failed:', dbError?.message || 'User not found');
+      console.log('Database query result:', userData, dbError);
+
+      if (dbError) {
+        console.error('Database error:', dbError.message);
+        setIsLoading(false);
+        return { success: false, error: 'Ошибка базы данных' };
+      }
+
+      if (!userData) {
+        console.error('Login failed: User not found or wrong password');
         setIsLoading(false);
         return { success: false, error: 'Неверный email или пароль' };
       }
