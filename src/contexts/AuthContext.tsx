@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { AuthState, UserProfile, UserRole } from "../types/auth-types";
 import { supabase } from "@/integrations/supabase/client";
-import { createDemoAccounts, loginUser, logoutUser } from "@/utils/authUtils";
+import { loginUser, logoutUser } from "@/utils/authUtils";
 import { initializeDatabase } from "@/utils/databaseUtils";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -23,13 +23,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const navigate = useNavigate();
 
-  // Создаем демо-аккаунты и инициализируем базу данных при первой загрузке
+  // Инициализируем базу данных при первой загрузке
   useEffect(() => {
     const initApp = async () => {
       try {
-        await createDemoAccounts();
-        console.log("Demo accounts created or verified");
-        
         await initializeDatabase();
         console.log("Database initialized");
       } catch (error) {

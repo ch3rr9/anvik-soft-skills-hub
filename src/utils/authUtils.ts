@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfile, UserRole } from "@/types/auth-types";
 
@@ -104,7 +105,7 @@ export const loginUser = async (
     
     const user = userData[0];
     
-    // Проверяем совпадени�� пароля
+    // Проверяем совпадение пароля
     if (user.password !== password) {
       console.error("Password mismatch for user:", email);
       return { success: false, error: "Неверный email или пароль" };
@@ -197,56 +198,5 @@ export const getCurrentUser = async (): Promise<UserProfile | null> => {
   } catch (error) {
     console.error("Error getting current user:", error);
     return null;
-  }
-};
-
-/**
- * Создание демо-аккаунтов для разных ролей
- */
-export const createDemoAccounts = async (): Promise<void> => {
-  const demoAccounts = [
-    {
-      email: "director@anvik-soft.com",
-      password: "director123",
-      name: "Александр Директоров",
-      role: "director" as UserRole,
-      department: "Руководство",
-      position: "Генеральный директор",
-      avatarUrl: "https://i.pravatar.cc/150?u=director"
-    },
-    {
-      email: "hr@anvik-soft.com",
-      password: "hr123",
-      name: "Елена Кадрова",
-      role: "hr" as UserRole,
-      department: "HR отдел",
-      position: "HR менеджер",
-      avatarUrl: "https://i.pravatar.cc/150?u=hr"
-    },
-    {
-      email: "manager@anvik-soft.com",
-      password: "manager123",
-      name: "Михаил Управленцев",
-      role: "manager" as UserRole,
-      department: "Отдел разработки",
-      position: "Руководитель проектов",
-      avatarUrl: "https://i.pravatar.cc/150?u=manager"
-    },
-    {
-      email: "employee@anvik-soft.com",
-      password: "employee123",
-      name: "Ирина Сотрудникова",
-      role: "employee" as UserRole,
-      department: "Отдел разработки",
-      position: "Frontend разработчик",
-      avatarUrl: "https://i.pravatar.cc/150?u=employee"
-    }
-  ];
-
-  for (const account of demoAccounts) {
-    const { email, password, ...userData } = account;
-    
-    // Исправлено: Явно добавляем email в userData, чтобы соответствовать типу Omit<UserProfile, "id">
-    await registerUser(email, password, { ...userData, email });
   }
 };
