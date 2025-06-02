@@ -36,7 +36,7 @@ export const useAuthState = (): AuthHookReturn => {
     console.log('Attempting login for:', email);
 
     try {
-      // Ищем пользователя в базе данных - используем .maybeSingle() вместо .single()
+      // Сначала пытаемся найти в базе данных
       const { data: userData, error: dbError } = await supabase
         .from('users')
         .select('*')
@@ -46,28 +46,45 @@ export const useAuthState = (): AuthHookReturn => {
 
       console.log('Database query result:', userData, dbError);
 
-      if (dbError) {
-        console.error('Database error:', dbError.message);
-        setIsLoading(false);
-        return { success: false, error: 'Ошибка базы данных' };
+      let userProfile: UserProfile | null = null;
+
+      if (userData && !dbError) {
+        // Пользователь найден в базе данных
+        userProfile = {
+          id: userData.id.toString(),
+          name: userData.name,
+          email: userData.email,
+          role: userData.role as UserRole,
+          department: userData.department || '',
+          position: userData.position || '',
+          avatarUrl: userData.avatar_url || ''
+        };
+        console.log('User found in database:', userProfile);
+      } else {
+        // Fallback: ищем в localStorage
+        console.log('User not found in database, checking localStorage fallback...');
+        const demoUsers = JSON.parse(localStorage.getItem('demo_users') || '[]');
+        const localUser = demoUsers.find((u: any) => u.email === email && u.password === password);
+        
+        if (localUser) {
+          userProfile = {
+            id: localUser.id.toString(),
+            name: localUser.name,
+            email: localUser.email,
+            role: localUser.role as UserRole,
+            department: localUser.department || '',
+            position: localUser.position || '',
+            avatarUrl: localUser.avatar_url || ''
+          };
+          console.log('User found in localStorage fallback:', userProfile);
+        }
       }
 
-      if (!userData) {
-        console.error('Login failed: User not found or wrong password');
+      if (!userProfile) {
+        console.error('Login failed: User not found');
         setIsLoading(false);
         return { success: false, error: 'Неверный email или пароль' };
       }
-
-      // Создаём объект пользователя
-      const userProfile: UserProfile = {
-        id: userData.id.toString(),
-        name: userData.name,
-        email: userData.email,
-        role: userData.role as UserRole,
-        department: userData.department || '',
-        position: userData.position || '',
-        avatarUrl: userData.avatar_url || ''
-      };
 
       // Сохраняем пользователя
       setUser(userProfile);

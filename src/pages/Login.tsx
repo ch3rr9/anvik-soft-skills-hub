@@ -12,7 +12,7 @@ import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 import { UserRole } from "@/types/auth-types";
 import { Loader2, LogIn } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { createCherryUser } from "@/utils/adminUtils";
+import { createDemoUsers } from "@/utils/demoUserCreator";
 
 // Схема валидации формы входа
 const loginSchema = z.object({
@@ -73,22 +73,23 @@ const Login = () => {
     },
   });
 
-  // Создаём пользователя Cherry при загрузке страницы
+  // Создаём демо-пользователей при загрузке страницы
   useEffect(() => {
-    const initializeCherryUser = async () => {
+    const initializeDemoUsers = async () => {
       try {
-        const result = await createCherryUser();
+        console.log('Initializing demo users...');
+        const result = await createDemoUsers();
         if (result.success) {
-          console.log("Cherry user initialized successfully");
+          console.log('Demo users initialized successfully');
         } else {
-          console.warn("Failed to initialize Cherry user:", result.error);
+          console.warn('Failed to initialize some demo users');
         }
       } catch (error) {
-        console.error("Error initializing Cherry user:", error);
+        console.error('Error initializing demo users:', error);
       }
     };
 
-    initializeCherryUser();
+    initializeDemoUsers();
   }, []);
 
   const onSubmit = async (data: LoginFormValues) => {
