@@ -1,7 +1,7 @@
 
 import React from "react";
 import Navbar from "./Navbar";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 import { useAnimation } from "../ui/animate-presence";
 
 interface LayoutProps {
@@ -9,7 +9,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useSimpleAuth();
   const { isTransitioning } = useAnimation();
 
   if (!isAuthenticated) {

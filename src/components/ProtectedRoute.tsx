@@ -2,7 +2,7 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { UserRole } from "../types/auth-types";
-import { useAuth } from "../contexts/AuthContext";
+import { useSimpleAuth } from "../contexts/SimpleAuthContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,9 +11,9 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
-  roles = ["employee", "manager", "director"] 
+  roles = ["employee", "manager", "director", "hr"] 
 }) => {
-  const { isAuthenticated, isLoading, hasPermission } = useAuth();
+  const { isAuthenticated, isLoading, hasPermission } = useSimpleAuth();
 
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center">

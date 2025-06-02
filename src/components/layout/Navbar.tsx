@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -12,10 +12,13 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Menu, X, User, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout } = useSimpleAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const menuItems = [
@@ -26,8 +29,13 @@ const Navbar = () => {
     { label: 'Чат', href: '/chat' },
   ];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
+    toast({
+      title: "Выход выполнен",
+      description: "Вы вышли из системы",
+    });
+    navigate('/login');
   };
 
   return (

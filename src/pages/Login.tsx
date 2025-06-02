@@ -8,9 +8,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 import { UserRole } from "@/types/auth-types";
 import { Loader2, LogIn } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 // Схема валидации формы входа
 const loginSchema = z.object({
@@ -53,9 +54,8 @@ const demoAccounts = [
 ];
 
 const Login = () => {
-  const { login, isLoading } = useAuth();
+  const { login, isLoading } = useSimpleAuth();
   const navigate = useNavigate();
-  const [loginAttempted, setLoginAttempted] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -66,10 +66,22 @@ const Login = () => {
   });
 
   const onSubmit = async (data: LoginFormValues) => {
-    setLoginAttempted(true);
-    const success = await login(data.email, data.password);
-    if (success) {
+    console.log('Form submitted with:', data);
+    
+    const result = await login(data.email, data.password);
+    
+    if (result.success) {
+      toast({
+        title: "Вход выполнен",
+        description: "Добро пожаловать!",
+      });
       navigate("/");
+    } else {
+      toast({
+        title: "Ошибка входа",
+        description: result.error || "Неверный email или пароль",
+        variant: "destructive",
+      });
     }
   };
 
@@ -77,7 +89,22 @@ const Login = () => {
   const loginWithDemo = async (email: string, password: string) => {
     form.setValue("email", email);
     form.setValue("password", password);
-    await login(email, password);
+    
+    const result = await login(email, password);
+    
+    if (result.success) {
+      toast({
+        title: "Вход выполнен",
+        description: "Добро пожаловать!",
+      });
+      navigate("/");
+    } else {
+      toast({
+        title: "Ошибка входа",
+        description: result.error || "Ошибка демо-входа",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
