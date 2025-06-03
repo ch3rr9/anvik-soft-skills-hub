@@ -1,4 +1,4 @@
-import { useAuth } from "@/contexts/AuthContext";
+import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,9 +53,7 @@ const analytics = {
 
 // Компонент приветствия
 const Welcome = () => {
-  const {
-    user
-  } = useAuth();
+  const { user } = useSimpleAuth();
 
   // Определение приветствия в зависимости от времени суток
   const getGreeting = () => {
@@ -213,9 +211,7 @@ const RecentMessagesWidget = () => {
 
 // Виджет подсказок для менеджеров
 const ManagerTipsWidget = () => {
-  const {
-    hasPermission
-  } = useAuth();
+  const { hasPermission } = useSimpleAuth();
 
   // Если пользователь не менеджер или директор, не показываем виджет
   if (!hasPermission(["manager", "director"])) {
