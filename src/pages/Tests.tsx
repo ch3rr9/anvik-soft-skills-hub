@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, Clock, CheckCircle2, Settings } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { Test, TestResult } from "@/types/test-types";
@@ -22,7 +22,7 @@ const TestsList: React.FC<{
   availableRoles: string[];
   onStartTest: (test: Test) => void;
 }> = ({ tests, testResults, availableRoles, onStartTest }) => {
-  const { user } = useAuth();
+  const { user } = useSimpleAuth();
   
   // Фильтрация тестов по ролям пользователя
   const filteredTests = tests.filter(test => 
@@ -83,7 +83,7 @@ const PsychTest: React.FC<{
   test: Test;
   onSaveResult: (result: Omit<TestResult, "id">) => Promise<TestResult | null>;
 }> = ({ test, onSaveResult }) => {
-  const { user } = useAuth();
+  const { user } = useSimpleAuth();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -207,7 +207,7 @@ const PsychTestResults: React.FC<{ testResults: TestResult[] }> = ({ testResults
 };
 
 const Tests = () => {
-  const { user } = useAuth();
+  const { user } = useSimpleAuth();
   const [activeTab, setActiveTab] = useState<string>("available");
   const [tests, setTests] = useState<Test[]>([]);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
