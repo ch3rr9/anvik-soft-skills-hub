@@ -4,7 +4,7 @@ import { Message } from '@/types/chat-types';
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatMessageTime } from '@/utils/chatUtils';
-import { useAuth } from "@/contexts/AuthContext";
+import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 
 interface MessageGroupProps {
   date: string;
@@ -12,7 +12,7 @@ interface MessageGroupProps {
 }
 
 const MessageGroup = ({ date, messages }: MessageGroupProps) => {
-  const { user } = useAuth();
+  const { user } = useSimpleAuth();
 
   return (
     <div className="space-y-4">

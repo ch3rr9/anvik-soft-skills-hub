@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Calendar } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 import { generateYearlySchedule } from "@/data/scheduleData";
 
 // Мок данных для рабочего графика
@@ -30,7 +30,7 @@ const VACATIONS = [
 ];
 
 const WeekScheduleView = () => {
-  const { user } = useAuth();
+  const { user } = useSimpleAuth();
   const [weekSchedule, setWeekSchedule] = useState<any[]>([]);
   
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 import { MessageSquare } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatRoom, Message } from "@/types/chat-types";
@@ -18,7 +18,7 @@ import MessageInput from "@/components/chat/MessageInput";
 import { toast } from "@/hooks/use-toast";
 
 const Chat = () => {
-  const { user } = useAuth();
+  const { user } = useSimpleAuth();
   const [selectedChat, setSelectedChat] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
