@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,6 +14,7 @@ import Profile from "./pages/Profile";
 import Tests from "./pages/Tests";
 import Schedule from "./pages/Schedule";
 import Chat from "./pages/Chat";
+import Guide from "./pages/Guide";
 import Forbidden from "./pages/Forbidden";
 import NotFound from "./pages/NotFound";
 import AdminUserCreator from "./pages/AdminUserCreator";
@@ -76,6 +76,13 @@ const App = () => (
                 <ProtectedRoute>
                   <Layout>
                     <Chat />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/guide" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Guide />
                   </Layout>
                 </ProtectedRoute>
               } />

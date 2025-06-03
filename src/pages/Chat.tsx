@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 import { MessageSquare } from "lucide-react";
@@ -11,6 +12,7 @@ import {
   updateChatRoomsWithMessages,
   markMessagesAsRead
 } from "@/utils/chatUtils";
+import { ensureGeneralChatExists } from "@/utils/userUtils";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatHeader from "@/components/chat/ChatHeader";
 import MessageGroup from "@/components/chat/MessageGroup";
@@ -26,35 +28,38 @@ const Chat = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   // Загрузка чатов при монтировании компонента
-  useEffect(() => {
-    const fetchChats = async () => {
-      setIsLoading(true);
-      try {
-        const { data: chats, error } = await supabase
-          .from('chats')
-          .select('*');
-          
-        if (error) {
-          console.error('Error fetching chats:', error);
-          toast({ 
-            title: "Ошибка загрузки", 
-            description: "Не удалось загрузить чаты", 
-            variant: "destructive" 
-          });
-          return;
-        }
+  const fetchChats = async () => {
+    setIsLoading(true);
+    try {
+      // Создаем общий чат если его нет
+      await ensureGeneralChatExists();
+      
+      const { data: chats, error } = await supabase
+        .from('chats')
+        .select('*');
         
-        if (chats) {
-          const updatedChats = await updateChatRoomsWithMessages(chats);
-          setChatRooms(updatedChats);
-        }
-      } catch (e) {
-        console.error('Error:', e);
-      } finally {
-        setIsLoading(false);
+      if (error) {
+        console.error('Error fetching chats:', error);
+        toast({ 
+          title: "Ошибка загрузки", 
+          description: "Не удалось загрузить чаты", 
+          variant: "destructive" 
+        });
+        return;
       }
-    };
-    
+      
+      if (chats) {
+        const updatedChats = await updateChatRoomsWithMessages(chats);
+        setChatRooms(updatedChats);
+      }
+    } catch (e) {
+      console.error('Error:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  useEffect(() => {
     fetchChats();
     
     // Подписка на обновления чатов
@@ -125,7 +130,7 @@ const Chat = () => {
     if (!selectedChat || !user) return;
     
     const newMessage: Omit<Message, "id"> = {
-      chatId: String(selectedChat.id), // Convert number to string to match the type
+      chatId: String(selectedChat.id),
       senderId: user.id,
       senderName: user.name,
       content,
@@ -149,6 +154,11 @@ const Chat = () => {
     }
   };
   
+  // Обработчик создания нового чата
+  const handleChatCreated = () => {
+    fetchChats();
+  };
+  
   // Фильтрация чатов по поисковому запросу
   const filteredChatRooms = chatRooms.filter(chat => 
     chat.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -166,6 +176,7 @@ const Chat = () => {
         onSearchChange={setSearchTerm}
         onChatSelect={setSelectedChat}
         isLoading={isLoading}
+        onChatCreated={handleChatCreated}
       />
       
       <div className="flex-1 flex flex-col">

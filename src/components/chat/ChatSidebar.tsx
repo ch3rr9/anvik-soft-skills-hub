@@ -1,14 +1,13 @@
 
 import React from 'react';
-import { Search, MessageSquare } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { toast } from "@/hooks/use-toast";
 import { ChatRoom } from '@/types/chat-types';
 import { User, Users } from 'lucide-react';
+import CreateChatDialog from './CreateChatDialog';
 
 interface ChatSidebarProps {
   chatRooms: ChatRoom[];
@@ -17,6 +16,7 @@ interface ChatSidebarProps {
   onSearchChange: (value: string) => void;
   onChatSelect: (chat: ChatRoom) => void;
   isLoading: boolean;
+  onChatCreated: () => void;
 }
 
 const ChatSidebar = ({ 
@@ -25,15 +25,9 @@ const ChatSidebar = ({
   searchTerm, 
   onSearchChange, 
   onChatSelect,
-  isLoading
+  isLoading,
+  onChatCreated
 }: ChatSidebarProps) => {
-  const createNewChat = () => {
-    toast({
-      title: "В разработке",
-      description: "Функционал создания новых чатов находится в разработке",
-    });
-  };
-
   return (
     <div className="w-full max-w-xs border-r">
       <div className="p-4 space-y-4">
@@ -42,9 +36,7 @@ const ChatSidebar = ({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={createNewChat}>
-                  <MessageSquare className="h-5 w-5" />
-                </Button>
+                <CreateChatDialog onChatCreated={onChatCreated} />
               </TooltipTrigger>
               <TooltipContent>
                 <p>Создать новый чат</p>
@@ -83,7 +75,6 @@ const ChatSidebar = ({
                       {chat.type === "direct" ? <User className="h-4 w-4" /> : <Users className="h-4 w-4" />}
                     </AvatarFallback>
                   </Avatar>
-                  {/* Removed unread count badge */}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={`font-medium truncate ${

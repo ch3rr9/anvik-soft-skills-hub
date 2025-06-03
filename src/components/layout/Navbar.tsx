@@ -27,6 +27,7 @@ const Navbar = () => {
     { label: 'Тесты', href: '/tests' },
     { label: 'График работы', href: '/schedule' },
     { label: 'Чат', href: '/chat' },
+    { label: 'Руководство', href: '/guide' },
   ];
 
   const handleLogout = async () => {
