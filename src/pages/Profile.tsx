@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import TestResultsViewer from "@/components/director/TestResultsViewer";
 
 const ProfileInfo = () => {
-  const { user } = useAuth();
+  const { user } = useSimpleAuth();
   
   // Преобразование роли в русский текст и цвет беджа
   const roleLabels = {
@@ -224,7 +224,7 @@ const PreferencesTab = () => {
 };
 
 const DirectorDashboard = () => {
-  const { user } = useAuth();
+  const { user } = useSimpleAuth();
   
   if (!user) return null;
   
@@ -237,7 +237,7 @@ const DirectorDashboard = () => {
 };
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user } = useSimpleAuth();
   
   return (
     <div>
