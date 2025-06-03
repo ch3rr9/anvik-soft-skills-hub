@@ -82,7 +82,7 @@ export const ensureGeneralChatExists = async (): Promise<void> => {
 
     // Получаем всех пользователей
     const allUsers = await getAllUsers();
-    const participantIds = allUsers.map(user => user.id);
+    const participantIds = allUsers.map(user => Number(user.id));
 
     // Создаем общий чат
     const { error } = await supabase
