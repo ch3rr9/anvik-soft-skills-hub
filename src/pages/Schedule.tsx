@@ -7,6 +7,10 @@ import { toast } from "@/hooks/use-toast";
 import { Calendar } from "lucide-react";
 import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 import { generateYearlySchedule } from "@/data/scheduleData";
+import WeekNavigation from "@/components/schedule/WeekNavigation";
+import TestAssignmentDialog from "@/components/schedule/TestAssignmentDialog";
+import CalendarEvents from "@/components/schedule/CalendarEvents";
+import { CalendarEvent } from "@/types/schedule-types";
 
 // Мок данных для рабочего графика
 const WORK_SCHEDULE = [
@@ -29,22 +33,50 @@ const VACATIONS = [
   { id: 3, employee: "Алексей Программистов", startDate: "2025-07-01", endDate: "2025-07-14", status: "pending" },
 ];
 
+// Мок данных для событий календаря
+const MOCK_EVENTS: CalendarEvent[] = [
+  {
+    id: 1,
+    title: "Тест по JavaScript",
+    date: "2025-01-08",
+    type: "test",
+    status: "pending"
+  },
+  {
+    id: 2,
+    title: "Психологический тест",
+    date: "2025-01-10",
+    type: "test",
+    status: "completed"
+  },
+  {
+    id: 3,
+    title: "Встреча команды",
+    date: "2025-01-09",
+    type: "meeting"
+  },
+];
+
 const WeekScheduleView = () => {
   const { user } = useSimpleAuth();
   const [weekSchedule, setWeekSchedule] = useState<any[]>([]);
+  const [currentWeek, setCurrentWeek] = useState<Date>(() => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    const diff = today.getDay() === 0 ? 6 : today.getDay() - 1;
+    startOfWeek.setDate(today.getDate() - diff);
+    return startOfWeek;
+  });
+  const [events, setEvents] = useState<CalendarEvent[]>(MOCK_EVENTS);
   
   useEffect(() => {
     if (user) {
       const yearSchedule = generateYearlySchedule(user.role);
-      const today = new Date();
-      const startOfWeek = new Date(today);
-      const diff = today.getDay() === 0 ? 6 : today.getDay() - 1;
-      startOfWeek.setDate(today.getDate() - diff);
       
       const weekDays = [];
       for (let i = 0; i < 7; i++) {
-        const currentDate = new Date(startOfWeek);
-        currentDate.setDate(startOfWeek.getDate() + i);
+        const currentDate = new Date(currentWeek);
+        currentDate.setDate(currentWeek.getDate() + i);
         const scheduleDay = yearSchedule.find(day => 
           day.date.toDateString() === currentDate.toDateString()
         );
@@ -55,8 +87,28 @@ const WeekScheduleView = () => {
       }
       setWeekSchedule(weekDays);
     }
-  }, [user]);
+  }, [user, currentWeek]);
 
+  const handleWeekChange = (newWeek: Date) => {
+    setCurrentWeek(newWeek);
+  };
+
+  const handleTestAssigned = () => {
+    // Здесь будет логика обновления событий после назначения теста
+    toast({
+      title: "Календарь обновлен",
+      description: "Новые назначенные тесты отображены в календаре",
+    });
+  };
+
+  // Создаем массив дней недели от выбранной недели
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(currentWeek);
+    day.setDate(currentWeek.getDate() + i);
+    weekDays.push(day);
+  }
+  
   // Получаем текущую дату и день недели
   const today = new Date();
   const currentDay = today.getDay(); // 0 - воскресенье, 1 - понедельник и т.д.
@@ -65,14 +117,6 @@ const WeekScheduleView = () => {
   const startOfWeek = new Date(today);
   const diff = currentDay === 0 ? 6 : currentDay - 1; // преобразуем, чтобы понедельник был началом
   startOfWeek.setDate(today.getDate() - diff);
-  
-  // Создаем массив дней недели
-  const weekDays = [];
-  for (let i = 0; i < 7; i++) {
-    const day = new Date(startOfWeek);
-    day.setDate(startOfWeek.getDate() + i);
-    weekDays.push(day);
-  }
   
   // Форматирование даты для отображения
   const formatDate = (date: Date) => {
@@ -109,19 +153,8 @@ const WeekScheduleView = () => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-medium">
-          Неделя {startOfWeek.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} - 
-          {new Date(startOfWeek.setDate(startOfWeek.getDate() + 6)).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
-        </h2>
-        
-        <div className="space-x-2">
-          <Button variant="outline" size="sm" onClick={() => toast({ title: "В разработке", description: "Переход на предыдущую неделю" })}>
-            &lt; Предыдущая
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => toast({ title: "В разработке", description: "Переход на следующую неделю" })}>
-            Следующая &gt;
-          </Button>
-        </div>
+        <WeekNavigation currentWeek={currentWeek} onWeekChange={handleWeekChange} />
+        <TestAssignmentDialog onTestAssigned={handleTestAssigned} />
       </div>
       
       <div className="grid grid-cols-7 gap-2">
@@ -144,7 +177,7 @@ const WeekScheduleView = () => {
           return (
             <div 
               key={index} 
-              className={`rounded-lg border p-3 ${bgColor} ${textColor} ${isToday(day) ? 'ring-2 ring-anvik-primary' : ''}`}
+              className={`rounded-lg border p-3 min-h-[120px] ${bgColor} ${textColor} ${isToday(day) ? 'ring-2 ring-anvik-primary' : ''}`}
             >
               <div className="text-center">
                 <div className="font-medium">
@@ -172,6 +205,8 @@ const WeekScheduleView = () => {
                   </Badge>
                 )}
               </div>
+              
+              <CalendarEvents events={events} date={day} />
             </div>
           );
         })}
@@ -446,7 +481,7 @@ const Schedule = () => {
             <CardHeader>
               <CardTitle>Недельное расписание</CardTitle>
               <CardDescription>
-                Просмотр рабочего графика на текущую неделю
+                Просмотр рабочего графика на текущую неделю с возможностью назначения тестов
               </CardDescription>
             </CardHeader>
             <CardContent>

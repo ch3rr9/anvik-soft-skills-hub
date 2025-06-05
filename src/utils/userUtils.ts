@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "@/types/auth-types";
 
@@ -17,7 +18,7 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
     }
 
     return data.map(user => ({
-      id: String(user.id),
+      id: user.id.toString(),
       name: user.name,
       email: user.email,
       role: user.role as any,
@@ -39,7 +40,7 @@ export const getUserById = async (userId: string): Promise<UserProfile | null> =
     const { data, error } = await supabase
       .from("users")
       .select("*")
-      .eq("id", userId)
+      .eq("id", parseInt(userId))
       .single();
 
     if (error || !data) {
@@ -48,7 +49,7 @@ export const getUserById = async (userId: string): Promise<UserProfile | null> =
     }
 
     return {
-      id: String(data.id),
+      id: data.id.toString(),
       name: data.name,
       email: data.email,
       role: data.role as any,
@@ -81,7 +82,7 @@ export const ensureGeneralChatExists = async (): Promise<void> => {
 
     // Получаем всех пользователей
     const allUsers = await getAllUsers();
-    const participantIds = allUsers.map(user => user.id);
+    const participantIds = allUsers.map(user => parseInt(user.id));
 
     // Создаем общий чат
     const { error } = await supabase
