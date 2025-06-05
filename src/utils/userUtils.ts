@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "@/types/auth-types";
 
@@ -82,7 +81,7 @@ export const ensureGeneralChatExists = async (): Promise<void> => {
 
     // Получаем всех пользователей
     const allUsers = await getAllUsers();
-    const participantIds = allUsers.map(user => Number(user.id));
+    const participantIds = allUsers.map(user => user.id);
 
     // Создаем общий чат
     const { error } = await supabase
