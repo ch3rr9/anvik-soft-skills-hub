@@ -228,12 +228,7 @@ const ManagerTipsWidget = () => {
               <p className="font-medium">Оценка навыков команды</p>
               <p className="text-sm opacity-80">3 сотрудника ожидают тестирования</p>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => toast({
-            title: "В разработке",
-            description: "Функционал управления тестами в разработке"
-          })} className="text-gray-50">
-              Управление
-            </Button>
+            <TeamSkillsAssessment />
           </div>
           
           <div className="flex justify-between items-center">
@@ -254,12 +249,7 @@ const ManagerTipsWidget = () => {
               <p className="font-medium">Управление персоналом</p>
               <p className="text-sm opacity-80">Настройка прав доступа</p>
             </div>
-            <Button variant="secondary" size="sm" onClick={() => toast({
-            title: "В разработке",
-            description: "Панель управления персоналом в разработке"
-          })} className="text-slate-50">
-              Настройки
-            </Button>
+            <PersonnelManagement />
           </div>
         </div>
       </CardContent>
