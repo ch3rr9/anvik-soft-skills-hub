@@ -169,8 +169,9 @@ const Chat = () => {
     }
 
     if (chat.type === "direct" && user) {
-      const otherParticipant = chat.participants.find(p => p.id !== user.id);
-      return otherParticipant ? otherParticipant.name : "Неизвестный пользователь";
+      // For direct chats, find the other participant (participants is string[])
+      const otherParticipantId = chat.participants.find(participantId => participantId !== user.id);
+      return otherParticipantId ? `Пользователь ${otherParticipantId}` : "Неизвестный пользователь";
     }
 
     return "Групповой чат";
