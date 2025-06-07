@@ -31,7 +31,10 @@ export const useRealtimeChat = (
           window.dispatchEvent(new CustomEvent('chat-updated'));
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Chats channel status:', status);
+        setIsConnected(status === 'SUBSCRIBED');
+      });
 
     // Подписка на новые сообщения
     const messagesChannel = supabase
@@ -61,12 +64,6 @@ export const useRealtimeChat = (
         }
       )
       .subscribe();
-
-    // Отслеживание состояния подключения
-    chatsChannel.subscribe((status) => {
-      console.log('Chats channel status:', status);
-      setIsConnected(status === 'SUBSCRIBED');
-    });
 
     return () => {
       console.log('Cleaning up realtime subscriptions');
