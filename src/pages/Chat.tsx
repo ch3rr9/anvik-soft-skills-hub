@@ -12,30 +12,14 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { loadUserChats, ensureGeneralChatExists, loadChatMessages, sendMessage } from "@/utils/chatUtils";
 import { useRealtimeChat } from "@/hooks/useRealtimeChat";
+import { ChatMessage, ChatRoom, Message } from "@/types/chat-types";
 import QuickMessageDialog from "@/components/chat/QuickMessageDialog";
-
-interface Message {
-  id: number;
-  content: string;
-  sender_id: string;
-  sender_name: string;
-  timestamp: string;
-  read: boolean;
-}
-
-interface Chat {
-  id: number;
-  name: string;
-  type: string;
-  participants: any[];
-  created_at: string;
-}
 
 const Chat = () => {
   const { user } = useSimpleAuth();
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [chats, setChats] = useState<ChatRoom[]>([]);
+  const [selectedChat, setSelectedChat] = useState<ChatRoom | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -50,7 +34,16 @@ const Chat = () => {
       console.log('New message via realtime:', message);
       // Если это текущий чат, добавляем сообщение
       if (selectedChat && selectedChat.id.toString() === chatId) {
-        setMessages(prev => [...prev, message]);
+        const newChatMessage: ChatMessage = {
+          id: message.id,
+          chatId: message.chatId,
+          content: message.content,
+          senderId: message.senderId,
+          senderName: message.senderName,
+          timestamp: message.timestamp,
+          read: message.read
+        };
+        setMessages(prev => [...prev, newChatMessage]);
       }
       // Обновляем список чатов чтобы показать последнее сообщение
       loadChats();
@@ -152,14 +145,7 @@ const Chat = () => {
         setNewMessage("");
         // Сообщение будет добавлено через real-time подписку
         // Но на всякий случай обновляем локально тоже
-        setMessages(prev => [...prev, {
-          id: sentMessage.id,
-          content: sentMessage.content,
-          sender_id: sentMessage.senderId,
-          sender_name: sentMessage.senderName,
-          timestamp: sentMessage.timestamp,
-          read: sentMessage.read
-        }]);
+        setMessages(prev => [...prev, sentMessage]);
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -171,13 +157,13 @@ const Chat = () => {
     }
   };
 
-  const handleSelectChat = (chat: Chat) => {
+  const handleSelectChat = (chat: ChatRoom) => {
     console.log('Selecting chat:', chat);
     setSelectedChat(chat);
     loadMessages(chat.id.toString());
   };
 
-  const getChatDisplayName = (chat: Chat) => {
+  const getChatDisplayName = (chat: ChatRoom) => {
     if (chat.name && chat.name !== "") {
       return chat.name;
     }
@@ -283,19 +269,19 @@ const Chat = () => {
                       <div
                         key={message.id}
                         className={`flex ${
-                          message.sender_id === user?.id ? "justify-end" : "justify-start"
+                          message.senderId === user?.id ? "justify-end" : "justify-start"
                         }`}
                       >
                         <div
                           className={`max-w-[70%] p-3 rounded-lg ${
-                            message.sender_id === user?.id
+                            message.senderId === user?.id
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted"
                           }`}
                         >
-                          {message.sender_id !== user?.id && (
+                          {message.senderId !== user?.id && (
                             <p className="text-xs font-medium mb-1 opacity-70">
-                              {message.sender_name}
+                              {message.senderName}
                             </p>
                           )}
                           <p className="text-sm">{message.content}</p>
