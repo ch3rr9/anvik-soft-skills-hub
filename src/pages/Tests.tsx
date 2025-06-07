@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -515,69 +516,6 @@ const Tests = () => {
           </Tabs>
         </CardContent>
       </Card>
-    </div>
-  );
-};
-
-// Компонент для отображения списка тестов
-const TestsList: React.FC<{
-  tests: Test[];
-  testResults: TestResult[];
-  availableRoles: string[];
-  onStartTest: (test: Test) => void;
-}> = ({ tests, testResults, availableRoles, onStartTest }) => {
-  const { user } = useSimpleAuth();
-  
-  // Фильтрация тестов по ролям пользователя
-  const filteredTests = tests.filter(test => 
-    test.availableRoles.includes("all") || 
-    (user && test.availableRoles.includes(user.role))
-  );
-  
-  return (
-    <div className="space-y-4">
-      {filteredTests.map(test => {
-        const testResult = testResults.find(result => result.testId === test.id);
-        
-        return (
-          <Card key={test.id}>
-            <CardHeader>
-              <CardTitle>{test.title}</CardTitle>
-              <CardDescription>{test.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-sm text-muted-foreground">{test.category}</p>
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                  {test.timeLimit} минут
-                </span>
-              </div>
-              {testResult ? (
-                <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-green-500">
-                    Пройден {new Date(testResult.passedAt).toLocaleDateString()}
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <AlertCircle className="h-4 w-4 text-yellow-500" />
-                  <span className="text-sm text-yellow-500">Не пройден</span>
-                </div>
-              )}
-            </CardContent>
-            <CardFooter>
-              <Button 
-                onClick={() => onStartTest(test)}
-                disabled={testResult?.passed}
-              >
-                {testResult?.passed ? "Пройден" : "Начать тест"}
-              </Button>
-            </CardFooter>
-          </Card>
-        );
-      })}
     </div>
   );
 };
