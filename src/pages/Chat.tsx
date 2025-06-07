@@ -6,11 +6,12 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, Plus } from "lucide-react";
+import { Send, Plus, Wifi, WifiOff } from "lucide-react";
 import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { getUserChats, ensureGeneralChatExists } from "@/utils/userUtils";
+import { loadUserChats, ensureGeneralChatExists, loadChatMessages, sendMessage } from "@/utils/chatUtils";
+import { useRealtimeChat } from "@/hooks/useRealtimeChat";
 import QuickMessageDialog from "@/components/chat/QuickMessageDialog";
 
 interface Message {
@@ -38,30 +39,61 @@ const Chat = () => {
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      initializeChats();
+  // Real-time синхронизация
+  const { isConnected } = useRealtimeChat(
+    user?.id,
+    (updatedChats) => {
+      console.log('Chats updated via realtime');
+      loadChats();
+    },
+    (chatId, message) => {
+      console.log('New message via realtime:', message);
+      // Если это текущий чат, добавляем сообщение
+      if (selectedChat && selectedChat.id.toString() === chatId) {
+        setMessages(prev => [...prev, message]);
+      }
+      // Обновляем список чатов чтобы показать последнее сообщение
+      loadChats();
     }
-  }, [user]);
+  );
+
+  const loadChats = async () => {
+    if (!user) return;
+
+    try {
+      console.log('Loading chats for user:', user.id);
+      const userChats = await loadUserChats(user.id);
+      console.log('Loaded chats:', userChats);
+      setChats(userChats);
+
+      // Автоматически выбираем общий чат, если он есть
+      const generalChat = userChats.find(chat => chat.name === "Общий чат");
+      if (generalChat && !selectedChat) {
+        setSelectedChat(generalChat);
+        loadMessages(generalChat.id.toString());
+      }
+    } catch (error) {
+      console.error('Error loading chats:', error);
+      toast({
+        title: "Ошибка загрузки чатов",
+        description: "Не удалось загрузить список чатов",
+        variant: "destructive"
+      });
+    }
+  };
 
   const initializeChats = async () => {
     if (!user) return;
 
     setLoading(true);
     try {
+      console.log('Initializing chats...');
+      
       // Убеждаемся, что общий чат существует
       await ensureGeneralChatExists();
       
       // Загружаем все чаты пользователя
-      const userChats = await getUserChats(user.id);
-      setChats(userChats);
-
-      // Автоматически выбираем общий чат, если он есть
-      const generalChat = userChats.find(chat => chat.name === "Общий чат");
-      if (generalChat) {
-        setSelectedChat(generalChat);
-        loadMessages(generalChat.id.toString());
-      }
+      await loadChats();
     } catch (error) {
       console.error('Error initializing chats:', error);
       toast({
@@ -74,19 +106,32 @@ const Chat = () => {
     }
   };
 
+  useEffect(() => {
+    if (user) {
+      initializeChats();
+    }
+  }, [user]);
+
+  // Слушаем события обновления чатов
+  useEffect(() => {
+    const handleChatUpdate = () => {
+      console.log('Chat update event received');
+      loadChats();
+    };
+
+    window.addEventListener('chat-updated', handleChatUpdate);
+    
+    return () => {
+      window.removeEventListener('chat-updated', handleChatUpdate);
+    };
+  }, [user]);
+
   const loadMessages = async (chatId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('chat_id', chatId)
-        .order('timestamp', { ascending: true });
-
-      if (error) {
-        throw error;
-      }
-
-      setMessages(data || []);
+      console.log('Loading messages for chat:', chatId);
+      const chatMessages = await loadChatMessages(chatId);
+      console.log('Loaded messages:', chatMessages);
+      setMessages(chatMessages);
     } catch (error) {
       console.error('Error loading messages:', error);
       toast({
@@ -101,22 +146,21 @@ const Chat = () => {
     if (!user || !selectedChat || !newMessage.trim()) return;
 
     try {
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          chat_id: selectedChat.id.toString(),
-          sender_id: user.id,
-          sender_name: user.name,
-          content: newMessage.trim()
-        });
+      const sentMessage = await sendMessage(selectedChat.id, newMessage.trim(), user);
 
-      if (error) {
-        throw error;
+      if (sentMessage) {
+        setNewMessage("");
+        // Сообщение будет добавлено через real-time подписку
+        // Но на всякий случай обновляем локально тоже
+        setMessages(prev => [...prev, {
+          id: sentMessage.id,
+          content: sentMessage.content,
+          sender_id: sentMessage.senderId,
+          sender_name: sentMessage.senderName,
+          timestamp: sentMessage.timestamp,
+          read: sentMessage.read
+        }]);
       }
-
-      setNewMessage("");
-      // Перезагружаем сообщения
-      loadMessages(selectedChat.id.toString());
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -128,6 +172,7 @@ const Chat = () => {
   };
 
   const handleSelectChat = (chat: Chat) => {
+    console.log('Selecting chat:', chat);
     setSelectedChat(chat);
     loadMessages(chat.id.toString());
   };
@@ -145,9 +190,9 @@ const Chat = () => {
     return "Групповой чат";
   };
 
-  const handleChatCreated = (chatId: string) => {
-    // Перезагружаем список чатов после создания нового
-    initializeChats();
+  const handleChatCreated = () => {
+    console.log('Chat created, reloading chats...');
+    loadChats();
   };
 
   if (loading) {
@@ -161,7 +206,19 @@ const Chat = () => {
   return (
     <div className="h-[calc(100vh-120px)]">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Чаты и сообщения</h1>
+        <div className="flex items-center space-x-3">
+          <h1 className="text-2xl font-bold">Чаты и сообщения</h1>
+          <div className="flex items-center space-x-1">
+            {isConnected ? (
+              <Wifi className="h-4 w-4 text-green-500" />
+            ) : (
+              <WifiOff className="h-4 w-4 text-red-500" />
+            )}
+            <span className="text-xs text-muted-foreground">
+              {isConnected ? "Подключено" : "Отключено"}
+            </span>
+          </div>
+        </div>
         <QuickMessageDialog onChatCreated={handleChatCreated} />
       </div>
 

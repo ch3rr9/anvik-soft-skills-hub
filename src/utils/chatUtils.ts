@@ -39,15 +39,19 @@ export const groupMessagesByDate = (messages: Message[]): { date: string, messag
  */
 export const loadUserChats = async (userId: string): Promise<ChatRoom[]> => {
   try {
+    console.log('Loading chats for user:', userId);
+    
     const { data, error } = await supabase
       .from("chats")
       .select("*")
-      .filter("participants", "cs", `["${userId}"]`);
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error loading chats:", error);
       return [];
     }
+
+    console.log('Raw chats data:', data);
 
     const chats: ChatRoom[] = await Promise.all(
       data.map(async (chat) => {
@@ -81,6 +85,7 @@ export const loadUserChats = async (userId: string): Promise<ChatRoom[]> => {
       })
     );
 
+    console.log('Processed chats:', chats);
     return chats;
   } catch (error) {
     console.error("Error in loadUserChats:", error);
@@ -335,5 +340,84 @@ export const markMessagesAsRead = async (chatId: number | string, userId: string
   } catch (error) {
     console.error("Error in markMessagesAsRead:", error);
     return false;
+  }
+};
+
+/**
+ * Убедиться что общий чат существует и обновить участников
+ */
+export const ensureGeneralChatExists = async (): Promise<number | null> => {
+  try {
+    console.log('Checking for general chat...');
+    
+    // Получаем всех пользователей
+    const { data: allUsers, error: usersError } = await supabase
+      .from("users")
+      .select("id, name, email");
+
+    if (usersError) {
+      console.error("Error fetching users:", usersError);
+      return null;
+    }
+
+    const participants = allUsers.map(user => ({
+      id: user.id.toString(),
+      name: user.name,
+      email: user.email
+    }));
+
+    // Проверяем, есть ли уже общий чат
+    const { data: existingChat, error: chatError } = await supabase
+      .from("chats")
+      .select("id, participants")
+      .eq("name", "Общий чат")
+      .eq("type", "group")
+      .single();
+
+    if (chatError && chatError.code !== 'PGRST116') {
+      console.error("Error checking for general chat:", chatError);
+      return null;
+    }
+
+    if (existingChat) {
+      console.log('General chat exists, updating participants...');
+      
+      // Обновляем участников общего чата
+      const { error: updateError } = await supabase
+        .from("chats")
+        .update({ participants: participants })
+        .eq("id", existingChat.id);
+
+      if (updateError) {
+        console.error("Error updating general chat participants:", updateError);
+        return null;
+      }
+
+      console.log('General chat participants updated successfully');
+      return existingChat.id;
+    }
+
+    // Создаем общий чат если его нет
+    console.log('Creating general chat...');
+    const { data: newChat, error: createError } = await supabase
+      .from("chats")
+      .insert({
+        name: "Общий чат",
+        type: "group",
+        participants: participants
+      })
+      .select("id")
+      .single();
+
+    if (createError) {
+      console.error("Error creating general chat:", createError);
+      return null;
+    }
+
+    console.log('General chat created successfully with ID:', newChat.id);
+    return newChat.id;
+  } catch (error) {
+    console.error("Error in ensureGeneralChatExists:", error);
+    return null;
   }
 };

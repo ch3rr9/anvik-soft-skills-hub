@@ -64,59 +64,12 @@ export const getUserById = async (userId: string): Promise<UserProfile | null> =
 };
 
 /**
- * Создать или найти общий чат для всех пользователей
- */
-export const ensureGeneralChatExists = async (): Promise<string | null> => {
-  try {
-    // Проверяем, есть ли уже общий чат
-    const { data: existingChat } = await supabase
-      .from("chats")
-      .select("id")
-      .eq("name", "Общий чат")
-      .eq("type", "group")
-      .single();
-
-    if (existingChat) {
-      return existingChat.id.toString();
-    }
-
-    // Получаем всех пользователей для добавления в общий чат
-    const allUsers = await getAllUsers();
-    const participants = allUsers.map(user => ({
-      id: user.id,
-      name: user.name,
-      email: user.email
-    }));
-
-    // Создаем общий чат
-    const { data: newChat, error } = await supabase
-      .from("chats")
-      .insert({
-        name: "Общий чат",
-        type: "group",
-        participants: participants
-      })
-      .select("id")
-      .single();
-
-    if (error) {
-      console.error("Error creating general chat:", error);
-      return null;
-    }
-
-    console.log("General chat created successfully");
-    return newChat.id.toString();
-  } catch (error) {
-    console.error("Error in ensureGeneralChatExists:", error);
-    return null;
-  }
-};
-
-/**
  * Получить все чаты пользователя
  */
 export const getUserChats = async (userId: string): Promise<any[]> => {
   try {
+    console.log('Getting chats for user:', userId);
+    
     const { data, error } = await supabase
       .from("chats")
       .select("*")
@@ -127,15 +80,21 @@ export const getUserChats = async (userId: string): Promise<any[]> => {
       return [];
     }
 
-    // Фильтруем чаты, в которых участвует пользователь
-    const userChats = data.filter(chat => {
-      const participants = chat.participants as any[];
-      return participants.some(p => p.id === userId) || chat.type === "group";
-    });
+    console.log('All chats from DB:', data);
 
-    return userChats;
+    // Возвращаем все чаты - RLS политики уже фильтруют доступные чаты
+    return data || [];
   } catch (error) {
     console.error("Error in getUserChats:", error);
     return [];
   }
+};
+
+/**
+ * Создать или найти общий чат для всех пользователей - DEPRECATED
+ * Используйте ensureGeneralChatExists из chatUtils
+ */
+export const ensureGeneralChatExists = async (): Promise<string | null> => {
+  console.warn('ensureGeneralChatExists from userUtils is deprecated. Use the one from chatUtils instead.');
+  return null;
 };
