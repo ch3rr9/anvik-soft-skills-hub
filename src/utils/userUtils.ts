@@ -64,9 +64,9 @@ export const getUserById = async (userId: string): Promise<UserProfile | null> =
 };
 
 /**
- * Проверить, создан ли общий чат
+ * Создать или найти общий чат для всех пользователей
  */
-export const ensureGeneralChatExists = async (): Promise<void> => {
+export const ensureGeneralChatExists = async (): Promise<string | null> => {
   try {
     // Проверяем, есть ли уже общий чат
     const { data: existingChat } = await supabase
@@ -77,28 +77,65 @@ export const ensureGeneralChatExists = async (): Promise<void> => {
       .single();
 
     if (existingChat) {
-      return; // Общий чат уже существует
+      return existingChat.id.toString();
     }
 
-    // Получаем всех пользователей
+    // Получаем всех пользователей для добавления в общий чат
     const allUsers = await getAllUsers();
-    const participantIds = allUsers.map(user => parseInt(user.id));
+    const participants = allUsers.map(user => ({
+      id: user.id,
+      name: user.name,
+      email: user.email
+    }));
 
     // Создаем общий чат
-    const { error } = await supabase
+    const { data: newChat, error } = await supabase
       .from("chats")
-      .insert([{
+      .insert({
         name: "Общий чат",
         type: "group",
-        participants: participantIds
-      }]);
+        participants: participants
+      })
+      .select("id")
+      .single();
 
     if (error) {
       console.error("Error creating general chat:", error);
-    } else {
-      console.log("General chat created successfully");
+      return null;
     }
+
+    console.log("General chat created successfully");
+    return newChat.id.toString();
   } catch (error) {
     console.error("Error in ensureGeneralChatExists:", error);
+    return null;
+  }
+};
+
+/**
+ * Получить все чаты пользователя
+ */
+export const getUserChats = async (userId: string): Promise<any[]> => {
+  try {
+    const { data, error } = await supabase
+      .from("chats")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching chats:", error);
+      return [];
+    }
+
+    // Фильтруем чаты, в которых участвует пользователь
+    const userChats = data.filter(chat => {
+      const participants = chat.participants as any[];
+      return participants.some(p => p.id === userId) || chat.type === "group";
+    });
+
+    return userChats;
+  } catch (error) {
+    console.error("Error in getUserChats:", error);
+    return [];
   }
 };

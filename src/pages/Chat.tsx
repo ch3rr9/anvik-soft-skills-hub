@@ -1,151 +1,124 @@
 
-import { useState, useEffect } from "react";
-import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
-import { MessageSquare } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChatRoom, Message } from "@/types/chat-types";
-import { supabase } from "@/integrations/supabase/client";
-import { 
-  groupMessagesByDate, 
-  getMessagesForChat, 
-  saveMessage, 
-  updateChatRoomsWithMessages,
-  markMessagesAsRead
-} from "@/utils/chatUtils";
-import { ensureGeneralChatExists } from "@/utils/userUtils";
-import ChatSidebar from "@/components/chat/ChatSidebar";
-import ChatHeader from "@/components/chat/ChatHeader";
-import MessageGroup from "@/components/chat/MessageGroup";
-import MessageInput from "@/components/chat/MessageInput";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Send, Plus } from "lucide-react";
+import { useSimpleAuth } from "@/contexts/SimpleAuthContext";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { getUserChats, ensureGeneralChatExists } from "@/utils/userUtils";
+import QuickMessageDialog from "@/components/chat/QuickMessageDialog";
+
+interface Message {
+  id: number;
+  content: string;
+  sender_id: string;
+  sender_name: string;
+  timestamp: string;
+  read: boolean;
+}
+
+interface Chat {
+  id: number;
+  name: string;
+  type: string;
+  participants: any[];
+  created_at: string;
+}
 
 const Chat = () => {
   const { user } = useSimpleAuth();
-  const [selectedChat, setSelectedChat] = useState<ChatRoom | null>(null);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  // Загрузка чатов при монтировании компонента
-  const fetchChats = async () => {
-    setIsLoading(true);
+  const [newMessage, setNewMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      initializeChats();
+    }
+  }, [user]);
+
+  const initializeChats = async () => {
+    if (!user) return;
+
+    setLoading(true);
     try {
-      // Создаем общий чат если его нет
+      // Убеждаемся, что общий чат существует
       await ensureGeneralChatExists();
       
-      const { data: chats, error } = await supabase
-        .from('chats')
-        .select('*');
-        
-      if (error) {
-        console.error('Error fetching chats:', error);
-        toast({ 
-          title: "Ошибка загрузки", 
-          description: "Не удалось загрузить чаты", 
-          variant: "destructive" 
-        });
-        return;
+      // Загружаем все чаты пользователя
+      const userChats = await getUserChats(user.id);
+      setChats(userChats);
+
+      // Автоматически выбираем общий чат, если он есть
+      const generalChat = userChats.find(chat => chat.name === "Общий чат");
+      if (generalChat) {
+        setSelectedChat(generalChat);
+        loadMessages(generalChat.id.toString());
       }
-      
-      if (chats) {
-        const updatedChats = await updateChatRoomsWithMessages(chats);
-        setChatRooms(updatedChats);
-      }
-    } catch (e) {
-      console.error('Error:', e);
+    } catch (error) {
+      console.error('Error initializing chats:', error);
+      toast({
+        title: "Ошибка загрузки чатов",
+        description: "Не удалось загрузить список чатов",
+        variant: "destructive"
+      });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
-  
-  useEffect(() => {
-    fetchChats();
-    
-    // Подписка на обновления чатов
-    const chatsSubscription = supabase
-      .channel('chats_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'chats' },
-        (payload) => { fetchChats(); }
-      )
-      .subscribe();
-    
-    return () => {
-      supabase.removeChannel(chatsSubscription);
-    };
-  }, []);
-  
-  // Загрузка сообщений при выборе чата
-  useEffect(() => {
-    if (selectedChat && user) {
-      const fetchMessages = async () => {
-        const chatMessages = await getMessagesForChat(selectedChat.id);
-        setMessages(chatMessages);
-        
-        // Отметить сообщения как прочитанные
-        await markMessagesAsRead(selectedChat.id, user.id);
-      };
-      
-      fetchMessages();
-      
-      // Подписка на новые сообщения в выбранном чате
-      const messagesSubscription = supabase
-        .channel(`messages_${selectedChat.id}`)
-        .on('postgres_changes', 
-          { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${String(selectedChat.id)}` },
-          (payload) => {
-            const newMessageData = payload.new as any;
-            
-            // Преобразуем новое сообщение к нашему формату
-            const newMessage: Message = {
-              id: newMessageData.id,
-              chatId: newMessageData.chat_id,
-              senderId: newMessageData.sender_id,
-              senderName: newMessageData.sender_name,
-              content: newMessageData.content,
-              timestamp: newMessageData.timestamp,
-              read: newMessageData.read
-            };
-            
-            // Добавляем новое сообщение в стейт
-            setMessages(prev => [...prev, newMessage]);
-            
-            // Если сообщение от другого пользователя, отмечаем как прочитанное
-            if (newMessage.senderId !== user.id) {
-              markMessagesAsRead(selectedChat.id, user.id);
-            }
-          }
-        )
-        .subscribe();
-      
-      return () => {
-        supabase.removeChannel(messagesSubscription);
-      };
-    }
-  }, [selectedChat, user]);
-  
-  // Отправка сообщения
-  const sendMessage = async (content: string) => {
-    if (!selectedChat || !user) return;
-    
-    const newMessage: Omit<Message, "id"> = {
-      chatId: String(selectedChat.id),
-      senderId: user.id,
-      senderName: user.name,
-      content,
-      timestamp: new Date().toISOString(),
-      read: false,
-    };
-    
-    const savedMessage = await saveMessage(newMessage);
-    
-    if (savedMessage) {
+
+  const loadMessages = async (chatId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('chat_id', chatId)
+        .order('timestamp', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      setMessages(data || []);
+    } catch (error) {
+      console.error('Error loading messages:', error);
       toast({
-        title: "Сообщение отправлено",
-        description: `В чат "${selectedChat.name}"`,
+        title: "Ошибка загрузки сообщений",
+        description: "Не удалось загрузить сообщения",
+        variant: "destructive"
       });
-    } else {
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!user || !selectedChat || !newMessage.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          chat_id: selectedChat.id.toString(),
+          sender_id: user.id,
+          sender_name: user.name,
+          content: newMessage.trim()
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      setNewMessage("");
+      // Перезагружаем сообщения
+      loadMessages(selectedChat.id.toString());
+    } catch (error) {
+      console.error('Error sending message:', error);
       toast({
         title: "Ошибка отправки",
         description: "Не удалось отправить сообщение",
@@ -153,60 +126,163 @@ const Chat = () => {
       });
     }
   };
-  
-  // Обработчик создания нового чата
-  const handleChatCreated = () => {
-    fetchChats();
+
+  const handleSelectChat = (chat: Chat) => {
+    setSelectedChat(chat);
+    loadMessages(chat.id.toString());
   };
-  
-  // Фильтрация чатов по поисковому запросу
-  const filteredChatRooms = chatRooms.filter(chat => 
-    chat.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  // Группированные сообщения
-  const groupedMessages = groupMessagesByDate(messages);
+
+  const getChatDisplayName = (chat: Chat) => {
+    if (chat.name && chat.name !== "") {
+      return chat.name;
+    }
+
+    if (chat.type === "direct" && user) {
+      const otherParticipant = chat.participants.find(p => p.id !== user.id);
+      return otherParticipant ? otherParticipant.name : "Неизвестный пользователь";
+    }
+
+    return "Групповой чат";
+  };
+
+  const handleChatCreated = (chatId: string) => {
+    // Перезагружаем список чатов после создания нового
+    initializeChats();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-[calc(100vh-12rem)]">
-      <ChatSidebar
-        chatRooms={filteredChatRooms}
-        selectedChat={selectedChat}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        onChatSelect={setSelectedChat}
-        isLoading={isLoading}
-        onChatCreated={handleChatCreated}
-      />
-      
-      <div className="flex-1 flex flex-col">
-        {selectedChat ? (
-          <>
-            <ChatHeader chat={selectedChat} />
-            
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-6">
-                {groupedMessages.map((group, index) => (
-                  <MessageGroup 
-                    key={index} 
-                    date={group.date} 
-                    messages={group.messages} 
-                  />
+    <div className="h-[calc(100vh-120px)]">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Чаты и сообщения</h1>
+        <QuickMessageDialog onChatCreated={handleChatCreated} />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
+        {/* Список чатов */}
+        <Card className="md:col-span-1">
+          <CardHeader>
+            <CardTitle>Чаты</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[500px]">
+              <div className="space-y-2 p-4">
+                {chats.map((chat) => (
+                  <div
+                    key={chat.id}
+                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                      selectedChat?.id === chat.id
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted"
+                    }`}
+                    onClick={() => handleSelectChat(chat)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Avatar>
+                        <AvatarFallback>
+                          {getChatDisplayName(chat).charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">
+                          {getChatDisplayName(chat)}
+                        </p>
+                        <p className="text-sm opacity-70">
+                          {chat.type === "group" ? "Групповой чат" : "Личный чат"}
+                        </p>
+                      </div>
+                      {chat.type === "group" && (
+                        <Badge variant="secondary" className="text-xs">
+                          {chat.participants.length}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
             </ScrollArea>
-            
-            <MessageInput onSendMessage={sendMessage} />
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-            <MessageSquare className="h-16 w-16 mb-4 text-muted-foreground" />
-            <h3 className="text-xl font-medium mb-2">Выберите чат</h3>
-            <p className="text-muted-foreground">
-              Выберите существующий чат или создайте новый, чтобы начать общение
-            </p>
-          </div>
-        )}
+          </CardContent>
+        </Card>
+
+        {/* Окно чата */}
+        <Card className="md:col-span-2">
+          {selectedChat ? (
+            <>
+              <CardHeader>
+                <CardTitle>{getChatDisplayName(selectedChat)}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 flex flex-col h-[500px]">
+                {/* Сообщения */}
+                <ScrollArea className="flex-1 p-4">
+                  <div className="space-y-4">
+                    {messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${
+                          message.sender_id === user?.id ? "justify-end" : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`max-w-[70%] p-3 rounded-lg ${
+                            message.sender_id === user?.id
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted"
+                          }`}
+                        >
+                          {message.sender_id !== user?.id && (
+                            <p className="text-xs font-medium mb-1 opacity-70">
+                              {message.sender_name}
+                            </p>
+                          )}
+                          <p className="text-sm">{message.content}</p>
+                          <p className="text-xs opacity-70 mt-1">
+                            {new Date(message.timestamp).toLocaleTimeString('ru-RU', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+
+                {/* Ввод сообщения */}
+                <div className="p-4 border-t">
+                  <div className="flex space-x-2">
+                    <Input
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Введите сообщение..."
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          handleSendMessage();
+                        }
+                      }}
+                    />
+                    <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <p className="text-muted-foreground mb-4">Выберите чат для начала общения</p>
+                <QuickMessageDialog onChatCreated={handleChatCreated} />
+              </div>
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );

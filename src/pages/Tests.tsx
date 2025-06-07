@@ -11,9 +11,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from "@/hooks/use-toast";
 import { Test, TestResult } from "@/types/test-types";
 import { PSYCH_TEST, analyzePsychTestResults } from "@/data/psychTest";
+import { COMPUTER_TEST } from "@/data/computerTest";
 import { supabase } from "@/integrations/supabase/client";
 import { Json } from "@/integrations/supabase/types";
 import { sendTestResultToDirector } from "@/utils/pdfUtils";
+import RegularTest from "@/components/tests/RegularTest";
 
 // Компонент для отображения списка тестов
 const TestsList: React.FC<{
@@ -212,6 +214,7 @@ const Tests = () => {
   const [tests, setTests] = useState<Test[]>([]);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTest, setActiveTest] = useState<Test | null>(null);
   
   useEffect(() => {
     const fetchTestsData = async () => {
@@ -247,6 +250,7 @@ const Tests = () => {
           createdAt: new Date().toISOString()
         };
         
+        // Добавляем также тест на знание ПК из данных
         const allTests = [...mappedTests, psychTest];
         setTests(allTests);
         
@@ -295,71 +299,104 @@ const Tests = () => {
   // Сохранение результата теста
   const saveTestResult = async (result: Omit<TestResult, "id">): Promise<TestResult | null> => {
     try {
-      // Преобразуем формат для соответствия Supabase
-      const supabaseResult = {
-        test_id: result.testId,
-        user_id: result.userId,
-        score: result.score,
-        max_score: result.maxScore,
-        passed_at: result.passedAt,
-        passed: result.passed,
-        answers: result.answers as Json,
-        recommendation: analyzePsychTestResults(result.answers).recommendation,
-        needs_vacation: analyzePsychTestResults(result.answers).needsVacation
-      };
-      
-      const { data, error } = await supabase
-        .from('test_results')
-        .insert([supabaseResult])
-        .select();
+      // Для психологического теста используем специальную логику
+      if (result.testId === PSYCH_TEST.id) {
+        const { needsVacation, recommendation } = analyzePsychTestResults(result.answers);
         
-      if (error) {
-        throw error;
-      }
-      
-      if (!data || data.length === 0) {
-        return null;
-      }
-      
-      // Преобразование ответа из базы в наш формат TestResult
-      const savedResult: TestResult = {
-        id: data[0].id,
-        testId: data[0].test_id,
-        userId: data[0].user_id,
-        score: data[0].score,
-        maxScore: data[0].max_score,
-        passedAt: data[0].passed_at,
-        passed: data[0].passed,
-        answers: data[0].answers as number[],
-        recommendation: data[0].recommendation,
-        needsVacation: data[0].needs_vacation
-      };
-      
-      // Обновление результатов в локальном состоянии
-      setTestResults(prevResults => [...prevResults, savedResult]);
-      
-      // Если тест успешно сохранен, отправляем его директору в формате PDF
-      if (user) {
-        const test = tests.find(t => t.id === savedResult.testId);
-        if (test) {
-          // Отправка результата теста директору
-          const sent = await sendTestResultToDirector(test, savedResult, user);
-          if (sent) {
-            toast({
-              title: "PDF отчет отправлен",
-              description: "Результаты теста были отправлены директору в формате PDF",
-            });
-          } else {
-            toast({
-              title: "Ошибка отправки отчета",
-              description: "Не удалось отправить отчет директору",
-              variant: "destructive"
-            });
+        const supabaseResult = {
+          test_id: result.testId,
+          user_id: result.userId,
+          score: result.score,
+          max_score: result.maxScore,
+          passed_at: result.passedAt,
+          passed: result.passed,
+          answers: result.answers as Json,
+          recommendation: recommendation,
+          needs_vacation: needsVacation
+        };
+        
+        const { data, error } = await supabase
+          .from('test_results')
+          .insert([supabaseResult])
+          .select();
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (!data || data.length === 0) {
+          return null;
+        }
+        
+        const savedResult: TestResult = {
+          id: data[0].id,
+          testId: data[0].test_id,
+          userId: data[0].user_id,
+          score: data[0].score,
+          maxScore: data[0].max_score,
+          passedAt: data[0].passed_at,
+          passed: data[0].passed,
+          answers: data[0].answers as number[],
+          recommendation: data[0].recommendation,
+          needsVacation: data[0].needs_vacation
+        };
+        
+        setTestResults(prevResults => [...prevResults, savedResult]);
+        return savedResult;
+      } else {
+        // Для обычных тестов
+        const supabaseResult = {
+          test_id: result.testId,
+          user_id: result.userId,
+          score: result.score,
+          max_score: result.maxScore,
+          passed_at: result.passedAt,
+          passed: result.passed,
+          answers: result.answers as Json
+        };
+        
+        const { data, error } = await supabase
+          .from('test_results')
+          .insert([supabaseResult])
+          .select();
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (!data || data.length === 0) {
+          return null;
+        }
+        
+        const savedResult: TestResult = {
+          id: data[0].id,
+          testId: data[0].test_id,
+          userId: data[0].user_id,
+          score: data[0].score,
+          maxScore: data[0].max_score,
+          passedAt: data[0].passed_at,
+          passed: data[0].passed,
+          answers: data[0].answers as number[]
+        };
+        
+        setTestResults(prevResults => [...prevResults, savedResult]);
+        
+        // Отправка результата теста директору
+        if (user) {
+          const test = tests.find(t => t.id === savedResult.testId);
+          if (test) {
+            const sent = await sendTestResultToDirector(test, savedResult, user);
+            if (sent) {
+              toast({
+                title: "PDF отчет отправлен",
+                description: "Результаты теста были отправлены директору в формате PDF",
+              });
+            }
           }
         }
+        
+        return savedResult;
       }
-      
-      return savedResult;
     } catch (error) {
       console.error('Error saving test result:', error);
       toast({
@@ -371,24 +408,6 @@ const Tests = () => {
     }
   };
   
-  // Получение тестов, доступных для текущего пользователя
-  const getUserTests = () => {
-    if (!user) return [];
-    
-    return tests.filter(test => 
-      test.availableRoles.includes("all") || test.availableRoles.includes(user.role)
-    );
-  };
-  
-  // Получение результатов психологического теста
-  const getPsychResults = () => {
-    if (!user) return [];
-    
-    return testResults.filter(result => result.testId === PSYCH_TEST.id && result.userId === user.id);
-  };
-  
-  const [activeTest, setActiveTest] = useState<Test | null>(null);
-  
   const handleStartTest = (test: Test) => {
     setActiveTest(test);
   };
@@ -397,6 +416,28 @@ const Tests = () => {
     setActiveTest(null);
   };
 
+  // Если активен тест, показываем его интерфейс
+  if (activeTest) {
+    if (activeTest.id === PSYCH_TEST.id) {
+      return (
+        <div className="container mx-auto px-4 py-6">
+          <PsychTest test={PSYCH_TEST} onSaveResult={saveTestResult} />
+        </div>
+      );
+    } else {
+      return (
+        <div className="container mx-auto px-4 py-6">
+          <RegularTest 
+            test={activeTest} 
+            onSaveResult={saveTestResult}
+            onClose={handleCloseTest}
+          />
+        </div>
+      );
+    }
+  }
+
+  
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Тесты и оценка навыков</h1>
@@ -432,16 +473,10 @@ const Tests = () => {
             </TabsContent>
             
             <TabsContent value="psych">
-              {activeTest?.id === PSYCH_TEST.id ? (
-                <PsychTest test={PSYCH_TEST} onSaveResult={saveTestResult} />
-              ) : (
-                <>
-                  <PsychTestResults testResults={testResults} />
-                  <Button onClick={() => handleStartTest(PSYCH_TEST)}>
-                    Пройти психологический тест
-                  </Button>
-                </>
-              )}
+              <PsychTestResults testResults={testResults} />
+              <Button onClick={() => handleStartTest(PSYCH_TEST)}>
+                Пройти психологический тест
+              </Button>
             </TabsContent>
             
             <TabsContent value="results">
@@ -451,7 +486,7 @@ const Tests = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {getUserTests().map(test => {
+                  {tests.map(test => {
                     const testResult = testResults.find(result => result.testId === test.id);
                     
                     return testResult ? (
@@ -463,8 +498,13 @@ const Tests = () => {
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
-                          <p>Результат: {testResult.score}/{test.questions.length}</p>
-                          <Progress value={(testResult.score / test.questions.length) * 100} />
+                          <p>Результат: {testResult.score}/{testResult.maxScore}</p>
+                          <Progress value={(testResult.score / testResult.maxScore) * 100} />
+                          {testResult.passed ? (
+                            <Badge variant="default" className="mt-2">Пройден</Badge>
+                          ) : (
+                            <Badge variant="destructive" className="mt-2">Не пройден</Badge>
+                          )}
                         </CardContent>
                       </Card>
                     ) : null;
@@ -475,6 +515,69 @@ const Tests = () => {
           </Tabs>
         </CardContent>
       </Card>
+    </div>
+  );
+};
+
+// Компонент для отображения списка тестов
+const TestsList: React.FC<{
+  tests: Test[];
+  testResults: TestResult[];
+  availableRoles: string[];
+  onStartTest: (test: Test) => void;
+}> = ({ tests, testResults, availableRoles, onStartTest }) => {
+  const { user } = useSimpleAuth();
+  
+  // Фильтрация тестов по ролям пользователя
+  const filteredTests = tests.filter(test => 
+    test.availableRoles.includes("all") || 
+    (user && test.availableRoles.includes(user.role))
+  );
+  
+  return (
+    <div className="space-y-4">
+      {filteredTests.map(test => {
+        const testResult = testResults.find(result => result.testId === test.id);
+        
+        return (
+          <Card key={test.id}>
+            <CardHeader>
+              <CardTitle>{test.title}</CardTitle>
+              <CardDescription>{test.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="text-sm text-muted-foreground">{test.category}</p>
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  {test.timeLimit} минут
+                </span>
+              </div>
+              {testResult ? (
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <span className="text-sm text-green-500">
+                    Пройден {new Date(testResult.passedAt).toLocaleDateString()}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <AlertCircle className="h-4 w-4 text-yellow-500" />
+                  <span className="text-sm text-yellow-500">Не пройден</span>
+                </div>
+              )}
+            </CardContent>
+            <CardFooter>
+              <Button 
+                onClick={() => onStartTest(test)}
+                disabled={testResult?.passed}
+              >
+                {testResult?.passed ? "Пройден" : "Начать тест"}
+              </Button>
+            </CardFooter>
+          </Card>
+        );
+      })}
     </div>
   );
 };
