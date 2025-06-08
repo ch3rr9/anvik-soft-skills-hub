@@ -6,6 +6,8 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { Calendar, MessageSquare, CheckCircle, Clock } from "lucide-react";
+import TeamSkillsAssessment from "@/components/manager/TeamSkillsAssessment";
+import PersonnelManagement from "@/components/manager/PersonnelManagement";
 
 // Мок данных аналитики
 const analytics = {
