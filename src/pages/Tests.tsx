@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -300,13 +299,25 @@ const Tests = () => {
   // Сохранение результата теста
   const saveTestResult = async (result: Omit<TestResult, "id">): Promise<TestResult | null> => {
     try {
+      console.log('Сохранение результата теста:', result);
+      
+      if (!user) {
+        console.error('Пользователь не авторизован');
+        toast({
+          title: "Ошибка авторизации",
+          description: "Необходимо войти в систему для сохранения результатов",
+          variant: "destructive"
+        });
+        return null;
+      }
+
       // Для психологического теста используем специальную логику
       if (result.testId === PSYCH_TEST.id) {
         const { needsVacation, recommendation } = analyzePsychTestResults(result.answers);
         
         const supabaseResult = {
           test_id: result.testId,
-          user_id: result.userId,
+          user_id: user.id.toString(), // Убеждаемся, что user_id - строка
           score: result.score,
           max_score: result.maxScore,
           passed_at: result.passedAt,
@@ -316,16 +327,20 @@ const Tests = () => {
           needs_vacation: needsVacation
         };
         
+        console.log('Данные для сохранения психо-теста:', supabaseResult);
+        
         const { data, error } = await supabase
           .from('test_results')
           .insert([supabaseResult])
           .select();
           
         if (error) {
+          console.error('Ошибка при сохранении результата психо-теста:', error);
           throw error;
         }
         
         if (!data || data.length === 0) {
+          console.error('Данные не были сохранены');
           return null;
         }
         
@@ -343,12 +358,13 @@ const Tests = () => {
         };
         
         setTestResults(prevResults => [...prevResults, savedResult]);
+        console.log('Результат психо-теста успешно сохранен:', savedResult);
         return savedResult;
       } else {
         // Для обычных тестов
         const supabaseResult = {
           test_id: result.testId,
-          user_id: result.userId,
+          user_id: user.id.toString(), // Убеждаемся, что user_id - строка
           score: result.score,
           max_score: result.maxScore,
           passed_at: result.passedAt,
@@ -356,16 +372,20 @@ const Tests = () => {
           answers: result.answers as Json
         };
         
+        console.log('Данные для сохранения обычного теста:', supabaseResult);
+        
         const { data, error } = await supabase
           .from('test_results')
           .insert([supabaseResult])
           .select();
           
         if (error) {
+          console.error('Ошибка при сохранении результата теста:', error);
           throw error;
         }
         
         if (!data || data.length === 0) {
+          console.error('Данные не были сохранены');
           return null;
         }
         
@@ -381,11 +401,12 @@ const Tests = () => {
         };
         
         setTestResults(prevResults => [...prevResults, savedResult]);
+        console.log('Результат теста успешно сохранен:', savedResult);
         
         // Отправка результата теста директору
-        if (user) {
-          const test = tests.find(t => t.id === savedResult.testId);
-          if (test) {
+        const test = tests.find(t => t.id === savedResult.testId);
+        if (test) {
+          try {
             const sent = await sendTestResultToDirector(test, savedResult, user);
             if (sent) {
               toast({
@@ -393,6 +414,9 @@ const Tests = () => {
                 description: "Результаты теста были отправлены директору в формате PDF",
               });
             }
+          } catch (pdfError) {
+            console.warn('Ошибка при отправке PDF:', pdfError);
+            // Не блокируем сохранение результата из-за ошибки PDF
           }
         }
         
@@ -402,7 +426,7 @@ const Tests = () => {
       console.error('Error saving test result:', error);
       toast({
         title: "Ошибка сохранения результата",
-        description: "Не удалось сохранить результат теста",
+        description: `Не удалось сохранить результат теста: ${error.message || 'Неизвестная ошибка'}`,
         variant: "destructive"
       });
       return null;
